@@ -30,7 +30,6 @@
     <div class="controls">
         <div class="file-upload">
             <label>1. Select Master Template</label>
-            <!-- Flipped so frame_vv_solid.jpeg is the default selected option -->
             <select id="layoutSelect" onchange="generateShowcase()">
                 <option value="frame_vv_solid.jpeg" selected>Vertical / Vertical (1:1 Square)</option>
                 <option value="frame_hh.jpeg">Horizontal / Horizontal (16:9)</option>
@@ -109,7 +108,6 @@
     }
 
     async function generateShowcase() {
-        // Prevent silent failure: wait until both are uploaded before trying to draw live slider updates
         if (!loadedBefore || !loadedAfter) return; 
 
         try {
@@ -125,7 +123,6 @@
             ctx.drawImage(frameImg, 0, 0, W, H);
 
             // LAYER 2: DRAW PHOTOS
-            // Before Photo (Clipped tightly to the exact center line)
             let bZoom = document.getElementById('bZoom').value / 100;
             let bX = (W / 4) + (document.getElementById('bX').value / 100) * (W / 2);
             let bY = (H / 2) + (document.getElementById('bY').value / 100) * (H / 2);
@@ -139,7 +136,6 @@
             ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
             ctx.restore();
 
-            // After Photo (Clipped to right half)
             let aZoom = document.getElementById('aZoom').value / 100;
             let aX = (W * 0.75) + (document.getElementById('aX').value / 100) * (W / 2);
             let aY = (H / 2) + (document.getElementById('aY').value / 100) * (H / 2);
@@ -158,15 +154,16 @@
             
             if (frameFilename === 'frame_hh.jpeg') {
                 topH = H * 0.18; botY = H * 0.82; botH = H * 0.18;
-                divX = W * 0.48; divW = W * 0.04;
+                divX = W * 0.485; divW = W * 0.03;
                 badgeX = W * 0.40; badgeW = W * 0.20; badgeH = H * 0.28;
-                edgeW = W * 0.035;
+                edgeW = W * 0.045;
             } else {
-                // Square (1:1) specific tight cuts
-                topH = H * 0.165; botY = H * 0.86; botH = H * 0.14;
-                divX = W * 0.47; divW = W * 0.06;
-                badgeX = W * 0.35; badgeW = W * 0.30; badgeH = H * 0.28;
-                edgeW = W * 0.035;
+                // Square (1:1) specific razor-tight cuts pulled from the actual pixels
+                topH = H * 0.16;                // Header stamp ends exactly at the gold line
+                botY = H * 0.886; botH = H * 0.114; // Footer stamp starts exactly at the lower gold line
+                divX = W * 0.485; divW = W * 0.03;  // Center divider is super thin
+                badgeX = W * 0.375; badgeW = W * 0.25; badgeH = H * 0.215; // Logo badge is perfectly wrapped
+                edgeW = W * 0.045;              // Outer borders expanded just enough to stop bleed
             }
 
             // Top Header Line
