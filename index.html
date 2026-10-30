@@ -104,16 +104,17 @@
         // 1. Draw the Master Frame FIRST
         ctx.drawImage(frameImg, 0, 0, W, H);
 
-        // 2. Define boxes using PERCENTAGES of the canvas size
+        // 2. Tightly bounded percentages to secure original frame lines and center dividers
         let leftBox, rightBox;
 
         if (frameFilename === 'frame_hh.jpg') {
-            leftBox =  { x: W * 0.025, y: H * 0.185, w: W * 0.465, h: H * 0.67 };
-            rightBox = { x: W * 0.510, y: H * 0.185, w: W * 0.465, h: H * 0.67 };
+            // Adjusting horizontal bounds (Widescreen 16:9)
+            leftBox =  { x: W * 0.038, y: H * 0.178, w: W * 0.448, h: H * 0.675 };
+            rightBox = { x: W * 0.514, y: H * 0.178, w: W * 0.448, h: H * 0.675 };
         } else {
-            // frame_vv.jpg
-            leftBox =  { x: W * 0.035, y: H * 0.190, w: W * 0.445, h: H * 0.67 };
-            rightBox = { x: W * 0.520, y: H * 0.190, w: W * 0.445, h: H * 0.67 };
+            // Adjusting vertical bounds (Square 1:1) to keep images away from center badge & borders
+            leftBox =  { x: W * 0.035, y: H * 0.165, w: W * 0.445, h: H * 0.678 };
+            rightBox = { x: W * 0.520, y: H * 0.165, w: W * 0.445, h: H * 0.678 };
         }
 
         // 3. Draw BEFORE Photo with Clipping Mask
