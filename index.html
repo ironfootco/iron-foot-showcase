@@ -49,7 +49,7 @@
             <label>1. Select Master Template</label>
             <select id="layoutSelect" onchange="runGenerate(false)">
                 <option value="frame_vv_solid.jpeg" selected>Vertical / Vertical (1:1 Square)</option>
-                <option value="frame_hh_solid.jpeg">Horizontal / Horizontal (16:9 Widescreen)</option>
+                <option value="frame_stack_solid.jpeg">Horizontal / Horizontal (4:5 Over/Under)</option>
             </select>
         </div>
 
@@ -166,72 +166,119 @@
             // LAYER 1: BASE BACKGROUND
             ctx.drawImage(frameImg, 0, 0, W, H);
 
-            // LAYER 2: DRAW PHOTOS
-            let bZoom = document.getElementById('bZoom').value / 100;
-            let bX = (W / 4) + (document.getElementById('bX').value / 100) * (W / 2);
-            let bY = (H / 2) + (document.getElementById('bY').value / 100) * (H / 2);
-            let bW = loadedBefore.width * bZoom;
-            let bH = loadedBefore.height * bZoom;
+            // LAYER 2: DRAW PHOTOS (VERTICAL VS HORIZONTAL CLIPPING)
+            if (frameFilename === 'frame_stack_solid.jpeg') {
+                // STACKED OVER/UNDER (HORIZONTAL / HORIZONTAL)
+                // BEFORE (Top Half)
+                let bZoom = document.getElementById('bZoom').value / 100;
+                // Pre-scaling so 100% fills the top half width properly
+                let baseBeforeScale = (W / loadedBefore.width);
+                let bW = loadedBefore.width * baseBeforeScale * bZoom;
+                let bH = loadedBefore.height * baseBeforeScale * bZoom;
 
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(0, 0, W / 2, H);
-            ctx.clip();
-            ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
-            ctx.restore();
+                // Position Before at H * 0.32 (the vertical visual center of top cutout)
+                let bX = (W / 2) + (document.getElementById('bX').value / 100) * (W / 2);
+                let bY = (H * 0.32) + (document.getElementById('bY').value / 100) * (H * 0.36);
 
-            let aZoom = document.getElementById('aZoom').value / 100;
-            let aX = (W * 0.75) + (document.getElementById('aX').value / 100) * (W / 2);
-            let aY = (H / 2) + (document.getElementById('aY').value / 100) * (H / 2);
-            let aW = loadedAfter.width * aZoom;
-            let aH = loadedAfter.height * aZoom;
+                ctx.save();
+                ctx.beginPath();
+                // Clip top half only (within outer border constraints)
+                ctx.rect(0, 0, W, H / 2);
+                ctx.clip();
+                ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
+                ctx.restore();
 
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(W / 2, 0, W / 2, H);
-            ctx.clip();
-            ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
-            ctx.restore();
+                // AFTER (Bottom Half)
+                let aZoom = document.getElementById('aZoom').value / 100;
+                let baseAfterScale = (W / loadedAfter.width);
+                let aW = loadedAfter.width * baseAfterScale * aZoom;
+                let aH = loadedAfter.height * baseAfterScale * aZoom;
+
+                // Position After at H * 0.68 (the vertical visual center of bottom cutout)
+                let aX = (W / 2) + (document.getElementById('aX').value / 100) * (W / 2);
+                let aY = (H * 0.685) + (document.getElementById('aY').value / 100) * (H * 0.36);
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, H / 2, W, H / 2);
+                ctx.clip();
+                ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
+                ctx.restore();
+
+            } else {
+                // SIDE-BY-SIDE (VERTICAL / VERTICAL) SQUARE
+                let bZoom = document.getElementById('bZoom').value / 100;
+                let bX = (W / 4) + (document.getElementById('bX').value / 100) * (W / 2);
+                let bY = (H / 2) + (document.getElementById('bY').value / 100) * (H / 2);
+                let bW = loadedBefore.width * bZoom;
+                let bH = loadedBefore.height * bZoom;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, 0, W / 2, H);
+                ctx.clip();
+                ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
+                ctx.restore();
+
+                let aZoom = document.getElementById('aZoom').value / 100;
+                let aX = (W * 0.75) + (document.getElementById('aX').value / 100) * (W / 2);
+                let aY = (H / 2) + (document.getElementById('aY').value / 100) * (H / 2);
+                let aW = loadedAfter.width * aZoom;
+                let aH = loadedAfter.height * aZoom;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(W / 2, 0, W / 2, H);
+                ctx.clip();
+                ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
+                ctx.restore();
+            }
 
             // LAYER 3: EXACT-CUT SANDWICH OVERLAY STAMPS
-            let topH, botY, botH, divX, divW, badgeX, badgeW, badgeH, edgeW;
+            let topH, botY, botH, divX, divY, divW, divH, badgeX, badgeY, badgeW, badgeH, edgeW;
             
-            if (frameFilename === 'frame_hh_solid.jpeg') {
-                // Widescreen (16:9) exact pixel calibration
-                topH = H * 0.200;
-                botY = H * 0.827; 
-                botH = H * 0.173;
-                divX = W * 0.478; 
-                divW = W * 0.044;
-                badgeX = W * 0.432; 
-                badgeW = W * 0.136; 
-                badgeH = H * 0.255;
-                edgeW = W * 0.032;
+            if (frameFilename === 'frame_stack_solid.jpeg') {
+                // 4:5 Vertical Stack coordinates
+                topH = H * 0.144;
+                botY = H * 0.892; botH = H * 0.108;
+                divY = H * 0.484; divH = H * 0.052;
+                badgeX = W * 0.718; badgeY = 0; badgeW = W * 0.224; badgeH = H * 0.188;
+                edgeW = W * 0.038;
+
+                // Top Header Line
+                ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
+                // Bottom Footer Line
+                ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
+                // Center Horizontal Divider
+                ctx.drawImage(frameImg, 0, divY, W, divH, 0, divY, W, divH);
+                // Top Right Logo Badge (Specific to 4:5 Stack)
+                ctx.drawImage(frameImg, badgeX, badgeY, badgeW, badgeH, badgeX, badgeY, badgeW, badgeH);
+                // Left Outer Border
+                ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
+                // Right Outer Border
+                ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
+
             } else {
                 // Square (1:1) tuned coordinates
                 topH = H * 0.168;
-                botY = H * 0.872; 
-                botH = H * 0.128;
-                divX = W * 0.470; 
-                divW = W * 0.060;
-                badgeX = W * 0.400; 
-                badgeW = W * 0.200; 
-                badgeH = H * 0.215;
+                botY = H * 0.872; botH = H * 0.128;
+                divX = W * 0.470; divW = W * 0.060;
+                badgeX = W * 0.400; badgeW = W * 0.200; badgeH = H * 0.215;
                 edgeW = W * 0.045;
-            }
 
-            // Top Header Line
-            ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
-            // Bottom Footer Line
-            ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
-            // Center Thin Double Divider
-            ctx.drawImage(frameImg, divX, 0, divW, H, divX, 0, divW, H);
-            // Top Center Logo Badge
-            ctx.drawImage(frameImg, badgeX, 0, badgeW, badgeH, badgeX, 0, badgeW, badgeH);
-            // Left Outer Border
-            ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
-            // Right Outer Border
-            ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
+                // Top Header Line
+                ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
+                // Bottom Footer Line
+                ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
+                // Center Thin Double Divider
+                ctx.drawImage(frameImg, divX, 0, divW, H, divX, 0, divW, H);
+                // Top Center Logo Badge
+                ctx.drawImage(frameImg, badgeX, 0, badgeW, badgeH, badgeX, 0, badgeW, badgeH);
+                // Left Outer Border
+                ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
+                // Right Outer Border
+                ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
+            }
 
             canvas.style.display = 'block';
             document.getElementById('downloadBtn').style.display = 'block';
