@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iron Foot Co. - Showcase Generator</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #121212; color: #fff; padding: 20px; text-align: center; }
+        body { font-family: -apple-system, sans-serif; background-color: #121212; color: #fff; padding: 20px; text-align: center; }
         .container { max-width: 800px; margin: 0 auto; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h1 { color: #d4af37; margin-top: 0; }
         .controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; text-align: left; }
@@ -35,10 +35,12 @@
         </div>
 
         <div class="file-upload">
-            <label>3. Select Layout</label>
+            <label>3. Select Master Template</label>
             <select id="layoutSelect">
-                <option value="16:9">16:9 Widescreen (Best for 2 Horizontal Photos)</option>
-                <option value="1:1">1:1 Square (Best for 2 Vertical Photos)</option>
+                <option value="frame_hh.png">Horizontal / Horizontal (16:9)</option>
+                <option value="frame_vv.png">Vertical / Vertical (1:1 Square)</option>
+                <option value="frame_hv.png">Horizontal Left / Vertical Right</option>
+                <option value="frame_vh.png">Vertical Left / Horizontal Right</option>
             </select>
         </div>
 
@@ -52,24 +54,31 @@
 <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    let generatedImgName = "IronFoot_Showcase.jpg";
 
-    function loadImage(file) {
+    function loadImage(source) {
         return new Promise((resolve, reject) => {
-            if (!file) { resolve(null); return; }
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.src = e.target.result;
+            if (!source) { resolve(null); return; }
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => {
+                alert("Could not load frame overlay. Make sure your PNG files are uploaded to GitHub.");
+                reject();
             };
-            reader.readAsDataURL(file);
+            
+            if (typeof source === 'string') {
+                img.src = source; // Load frame PNG from URL
+            } else {
+                // Load uploaded user photo
+                const reader = new FileReader();
+                reader.onload = (e) => img.src = e.target.result;
+                reader.readAsDataURL(source);
+            }
         });
     }
 
-    // Draws image inside a bounding box without cropping (Letterbox/Fit)
-    function drawImageFit(img, x, y, w, h) {
-        const scale = Math.min(w / img.width, h / img.height);
+    // Scales image to fill the given area (Cover) so there are no empty gaps behind the frame
+    function drawImageCover(img, x, y, w, h) {
+        const scale = Math.max(w / img.width, h / img.height);
         const nw = img.width * scale;
         const nh = img.height * scale;
         const nx = x + (w - nw) / 2;
@@ -80,99 +89,30 @@
     async function generateShowcase() {
         const beforeFile = document.getElementById('beforeImage').files[0];
         const afterFile = document.getElementById('afterImage').files[0];
-        const layout = document.getElementById('layoutSelect').value;
+        const frameFilename = document.getElementById('layoutSelect').value;
 
         if (!beforeFile || !afterFile) {
             alert("Please upload both a Before and After photo.");
             return;
         }
 
+        // Load the photos and the selected transparent frame overlay
         const imgBefore = await loadImage(beforeFile);
         const imgAfter = await loadImage(afterFile);
+        const frameImg = await loadImage(frameFilename);
 
-        // Canvas Setup
-        const width = layout === '16:9' ? 1920 : 1440;
-        const height = layout === '16:9' ? 1080 : 1440;
-        canvas.width = width;
-        canvas.height = height;
+        // Set canvas to match the master frame's exact dimensions
+        canvas.width = frameImg.width;
+        canvas.height = frameImg.height;
 
-        // 1. Draw Background
-        ctx.fillStyle = '#1e1e1e';
-        ctx.fillRect(0, 0, width, height);
+        // Draw the user photos UNDERNEATH the frame
+        // We roughly split the canvas in half. The transparent frame will cover the rough edges in the middle.
+        const halfWidth = canvas.width / 2;
+        drawImageCover(imgBefore, 0, 0, halfWidth + 50, canvas.height); // Added 50px bleed to hide the seam under the center post
+        drawImageCover(imgAfter, halfWidth - 50, 0, halfWidth + 50, canvas.height);
 
-        // 2. Define Image Windows
-        const margin = 60;
-        const topHeaderSpace = 180;
-        const bottomFooterSpace = 200;
-        const dividerWidth = 20;
-        
-        const photoWidth = (width - (margin * 2) - dividerWidth) / 2;
-        const photoHeight = height - topHeaderSpace - bottomFooterSpace;
-
-        const leftBox = { x: margin, y: topHeaderSpace, w: photoWidth, h: photoHeight };
-        const rightBox = { x: margin + photoWidth + dividerWidth, y: topHeaderSpace, w: photoWidth, h: photoHeight };
-
-        // 3. Draw Photos (Uncropped)
-        drawImageFit(imgBefore, leftBox.x, leftBox.y, leftBox.w, leftBox.h);
-        drawImageFit(imgAfter, rightBox.x, rightBox.y, rightBox.w, rightBox.h);
-
-        // 4. Draw Frames/Borders
-        ctx.strokeStyle = '#8B6508'; // Bronze
-        ctx.lineWidth = 8;
-        // Outer border
-        ctx.strokeRect(margin / 2, margin / 2, width - margin, height - margin);
-        // Divider
-        ctx.fillStyle = '#111';
-        ctx.fillRect(width/2 - dividerWidth/2, margin/2, dividerWidth, height - margin);
-        ctx.strokeRect(width/2 - dividerWidth/2, margin/2, dividerWidth, height - margin);
-
-        // 5. Draw Headers
-        ctx.textAlign = "center";
-        ctx.fillStyle = '#d4af37'; // Gold
-        
-        // BEFORE Header
-        ctx.font = "bold 65px Arial";
-        ctx.fillText("BEFORE", leftBox.x + (leftBox.w / 2), 110);
-        ctx.font = "24px Arial";
-        ctx.fillStyle = '#ccc';
-        ctx.fillText("NO JOB TOO SMALL", leftBox.x + (leftBox.w / 2), 150);
-
-        // AFTER Header
-        ctx.fillStyle = '#d4af37';
-        ctx.font = "bold 65px Arial";
-        ctx.fillText("AFTER", rightBox.x + (rightBox.w / 2), 110);
-        ctx.font = "24px Arial";
-        ctx.fillStyle = '#ccc';
-        ctx.fillText("FROM SMALL REPAIRS TO COMPLETE CARE", rightBox.x + (rightBox.w / 2), 150);
-
-        // 6. Draw Logo Box (Center Top)
-        const logoSize = 160;
-        ctx.fillStyle = '#111';
-        ctx.fillRect((width/2) - (logoSize/2), 30, logoSize, logoSize);
-        ctx.strokeRect((width/2) - (logoSize/2), 30, logoSize, logoSize);
-        
-        ctx.fillStyle = '#fff';
-        ctx.font = "bold 36px Impact, sans-serif";
-        ctx.fillText("IRON", width/2, 90);
-        ctx.fillText("FOOT CO.", width/2, 140);
-
-        // 7. Draw Footer
-        const footerY = height - 100;
-        ctx.fillStyle = '#d4af37'; // Gold
-        ctx.font = "bold 60px Arial";
-        ctx.fillText("IRON FOOT COMPANY", width/2, footerY);
-        
-        ctx.fillStyle = '#fff';
-        ctx.font = "bold 35px Arial";
-        ctx.textAlign = "right";
-        ctx.fillText("SOUTH SHORE, MA", (width/2) - 350, footerY - 5);
-        ctx.textAlign = "left";
-        ctx.fillText("(781) 412-7459", (width/2) + 360, footerY - 5);
-
-        ctx.textAlign = "center";
-        ctx.font = "22px Arial";
-        ctx.fillStyle = '#aaa';
-        ctx.fillText("Property Management • Handyman • General Maintenance • Restoration • Registered and Insured • HIC#212688", width/2, footerY + 50);
+        // Drop the Master Frame PNG OVER the photos
+        ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
 
         // Show canvas and download button
         canvas.style.display = 'block';
@@ -181,8 +121,8 @@
 
     function downloadImage() {
         const link = document.createElement('a');
-        link.download = 'IronFoot_BeforeAfter.jpg';
-        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.download = 'IronFoot_Showcase_Final.png';
+        link.href = canvas.toDataURL('image/png');
         link.click();
     }
 </script>
