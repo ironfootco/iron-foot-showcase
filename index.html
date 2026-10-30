@@ -10,10 +10,14 @@
         h1 { color: #d4af37; margin-top: 0; }
         .controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; text-align: left; }
         .file-upload { background: #2a2a2a; padding: 15px; border-radius: 6px; border: 1px solid #333; }
-        label { font-weight: bold; display: block; margin-bottom: 8px; color: #aaa; }
-        input[type="file"], select, input[type="range"] { display: block; width: 100%; color: #fff; }
+        label { font-weight: bold; display: block; margin-bottom: 8px; color: #aaa; font-size: 14px; }
+        input[type="file"], select { display: block; width: 100%; color: #fff; margin-bottom: 10px; }
+        .slider-group { display: flex; gap: 15px; align-items: center; }
+        .slider-group div { flex: 1; text-align: center; }
+        .slider-group input[type="range"] { width: 100%; margin-top: 5px; }
+        .slider-label { font-size: 12px; color: #888; text-transform: uppercase; }
         select, button { padding: 12px; font-size: 16px; border-radius: 6px; border: none; background: #333; color: #fff; cursor: pointer; }
-        button { background: #8B6508; font-weight: bold; text-transform: uppercase; margin-top: 10px; transition: background 0.2s; }
+        button { background: #8B6508; font-weight: bold; text-transform: uppercase; margin-top: 10px; transition: background 0.2s; width: 100%; }
         button:hover { background: #a67c00; }
         canvas { max-width: 100%; height: auto; border: 2px solid #8B6508; margin-top: 20px; display: none; }
     </style>
@@ -25,17 +29,7 @@
     
     <div class="controls">
         <div class="file-upload">
-            <label>1. Upload BEFORE Photo</label>
-            <input type="file" id="beforeImage" accept="image/*">
-        </div>
-        
-        <div class="file-upload">
-            <label>2. Upload AFTER Photo</label>
-            <input type="file" id="afterImage" accept="image/*">
-        </div>
-
-        <div class="file-upload">
-            <label>3. Select Master Template</label>
+            <label>1. Select Master Template</label>
             <select id="layoutSelect" onchange="generateShowcase()">
                 <option value="frame_hh.jpeg">Horizontal / Horizontal (16:9)</option>
                 <option value="frame_vv.jpeg">Vertical / Vertical (1:1 Square)</option>
@@ -43,13 +37,23 @@
         </div>
 
         <div class="file-upload">
-            <label>4. Adjust BEFORE Photo (Up/Down)</label>
-            <input type="range" id="beforeY" min="0" max="100" value="50" oninput="generateShowcase()">
+            <label>2. Upload BEFORE Photo</label>
+            <input type="file" id="beforeImage" accept="image/*">
+            <div class="slider-group">
+                <div><span class="slider-label">Zoom</span><input type="range" id="bZoom" min="10" max="300" value="100" oninput="generateShowcase()"></div>
+                <div><span class="slider-label">Left / Right</span><input type="range" id="bX" min="-200" max="200" value="0" oninput="generateShowcase()"></div>
+                <div><span class="slider-label">Up / Down</span><input type="range" id="bY" min="-200" max="200" value="0" oninput="generateShowcase()"></div>
+            </div>
         </div>
-
+        
         <div class="file-upload">
-            <label>5. Adjust AFTER Photo (Up/Down)</label>
-            <input type="range" id="afterY" min="0" max="100" value="50" oninput="generateShowcase()">
+            <label>3. Upload AFTER Photo</label>
+            <input type="file" id="afterImage" accept="image/*">
+            <div class="slider-group">
+                <div><span class="slider-label">Zoom</span><input type="range" id="aZoom" min="10" max="300" value="100" oninput="generateShowcase()"></div>
+                <div><span class="slider-label">Left / Right</span><input type="range" id="aX" min="-200" max="200" value="0" oninput="generateShowcase()"></div>
+                <div><span class="slider-label">Up / Down</span><input type="range" id="aY" min="-200" max="200" value="0" oninput="generateShowcase()"></div>
+            </div>
         </div>
 
         <button onclick="generateShowcase()">Generate Showcase</button>
@@ -94,26 +98,10 @@
         });
     }
 
-    function drawImagePan(img, x, y, w, h, offsetYPercent) {
-        const scale = Math.max(w / img.width, h / img.height);
-        const nw = img.width * scale;
-        const nh = img.height * scale;
-        const nx = x + (w - nw) / 2; 
-        
-        const maxNy = y;
-        const minNy = y - (nh - h);
-        const ny = minNy + (maxNy - minNy) * (offsetYPercent / 100);
-        
-        ctx.drawImage(img, nx, ny, nw, nh);
-    }
-
     async function generateShowcase() {
         if (!loadedBefore || !loadedAfter) return;
 
         const frameFilename = document.getElementById('layoutSelect').value;
-        const beforeY = 100 - document.getElementById('beforeY').value; 
-        const afterY = 100 - document.getElementById('afterY').value;
-
         const frameImg = await loadImage(frameFilename);
 
         const W = frameImg.width;
@@ -121,7 +109,7 @@
         canvas.width = W;
         canvas.height = H;
 
-        // 1. TARGETED CHROMA-KEY (Only attack the windows)
+        // 1. SIMPLE, BRUTE-FORCE CHROMA KEY (Deletes bright white background, leaves everything else)
         const offCanvas = document.createElement('canvas');
         offCanvas.width = W;
         offCanvas.height = H;
@@ -130,55 +118,54 @@
         const imgData = offCtx.getImageData(0, 0, W, H);
         const data = imgData.data;
 
-        for (let y = 0; y < H; y++) {
-            for (let x = 0; x < W; x++) {
-                const i = (y * W + x) * 4;
-                const r = data[i], g = data[i+1], b = data[i+2];
-
-                // Safely exclude the top and bottom text areas from destruction
-                const inVerticalWindowRange = (y > H * 0.15 && y < H * 0.84);
+        for (let i = 0; i < data.length; i += 4) {
+            // If the pixel is extremely bright/white (the windows or the JPEG halo artifacts), make it transparent
+            if (data[i] > 220 && data[i+1] > 220 && data[i+2] > 220) {
+                // Exclude the center logo from being deleted
+                const x = (i / 4) % W;
+                const y = Math.floor((i / 4) / W);
+                const inLogoBadge = (x > W * 0.35 && x < W * 0.65 && y < H * 0.25);
                 
-                // Safely exclude the center Logo Badge from destruction
-                const inLogoBadge = (x > W * 0.33 && x < W * 0.67 && y < H * 0.28);
-
-                // Only attack pixels if they are inside the window space AND not touching the logo
-                if (inVerticalWindowRange && !inLogoBadge) {
-                    
-                    // Attack bright, neutral pixels (the white boxes and gray halos)
-                    const isNeutral = Math.abs(r - g) < 35 && Math.abs(g - b) < 35 && Math.abs(r - b) < 35;
-                    const isBright = r > 100 && g > 100 && b > 100;
-                    const isPureWhite = r > 240 && g > 240 && b > 240;
-
-                    if ((isNeutral && isBright) || isPureWhite) {
-                        data[i+3] = 0; // Punch hole
-                    }
+                if (!inLogoBadge) {
+                    data[i+3] = 0; 
                 }
             }
         }
         offCtx.putImageData(imgData, 0, 0);
 
-        // 2. LAYER PHOTOS (Full-bleed halves)
-        ctx.fillStyle = '#111';
+        // 2. DRAW BLACK BACKGROUND
+        ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);
 
-        const leftBox = { x: 0, y: 0, w: W * 0.51, h: H };
-        const rightBox = { x: W * 0.49, y: 0, w: W * 0.51, h: H };
+        // 3. DRAW BEFORE PHOTO (Left Half, with manual controls)
+        let bZoom = document.getElementById('bZoom').value / 100;
+        let bX = (W / 4) + (document.getElementById('bX').value / 100) * (W / 2); // Center is 25% of canvas width
+        let bY = (H / 2) + (document.getElementById('bY').value / 100) * (H / 2); // Center is 50% of canvas height
+        let bW = loadedBefore.width * bZoom;
+        let bH = loadedBefore.height * bZoom;
 
         ctx.save();
         ctx.beginPath();
-        ctx.rect(leftBox.x, leftBox.y, leftBox.w, leftBox.h);
+        ctx.rect(0, 0, W / 2, H); // Restrict to left half so it doesn't bleed right
         ctx.clip();
-        drawImagePan(loadedBefore, leftBox.x, leftBox.y, leftBox.w, leftBox.h, beforeY);
+        ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
         ctx.restore();
+
+        // 4. DRAW AFTER PHOTO (Right Half, with manual controls)
+        let aZoom = document.getElementById('aZoom').value / 100;
+        let aX = (W * 0.75) + (document.getElementById('aX').value / 100) * (W / 2); // Center is 75% of canvas width
+        let aY = (H / 2) + (document.getElementById('aY').value / 100) * (H / 2);
+        let aW = loadedAfter.width * aZoom;
+        let aH = loadedAfter.height * aZoom;
 
         ctx.save();
         ctx.beginPath();
-        ctx.rect(rightBox.x, rightBox.y, rightBox.w, rightBox.h);
+        ctx.rect(W / 2, 0, W / 2, H); // Restrict to right half so it doesn't bleed left
         ctx.clip();
-        drawImagePan(loadedAfter, rightBox.x, rightBox.y, rightBox.w, rightBox.h, afterY);
+        ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
         ctx.restore();
 
-        // 3. DROP THE PERFECTLY CUT FRAME OVER THE PHOTOS
+        // 5. DROP THE PERFECTLY CUT FRAME OVER THE PHOTOS
         ctx.drawImage(offCanvas, 0, 0, W, H);
 
         canvas.style.display = 'block';
