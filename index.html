@@ -166,47 +166,42 @@
             // LAYER 1: BASE BACKGROUND
             ctx.drawImage(frameImg, 0, 0, W, H);
 
-            // LAYER 2: DRAW PHOTOS (VERTICAL VS HORIZONTAL CLIPPING)
+            // LAYER 2: DRAW PHOTOS
             if (frameFilename === 'frame_stack_solid.jpeg') {
-                // STACKED OVER/UNDER (HORIZONTAL / HORIZONTAL)
-                // BEFORE (Top Half)
+                // BEFORE (Top Window)
                 let bZoom = document.getElementById('bZoom').value / 100;
-                // Pre-scaling so 100% fills the top half width properly
                 let baseBeforeScale = (W / loadedBefore.width);
                 let bW = loadedBefore.width * baseBeforeScale * bZoom;
                 let bH = loadedBefore.height * baseBeforeScale * bZoom;
 
-                // Position Before at H * 0.32 (the vertical visual center of top cutout)
                 let bX = (W / 2) + (document.getElementById('bX').value / 100) * (W / 2);
-                let bY = (H * 0.32) + (document.getElementById('bY').value / 100) * (H * 0.36);
+                let bY = (H * 0.31) + (document.getElementById('bY').value / 100) * (H * 0.35);
 
                 ctx.save();
                 ctx.beginPath();
-                // Clip top half only (within outer border constraints)
-                ctx.rect(0, 0, W, H / 2);
+                ctx.rect(0, 0, W, H * 0.48);
                 ctx.clip();
                 ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
                 ctx.restore();
 
-                // AFTER (Bottom Half)
+                // AFTER (Bottom Window)
                 let aZoom = document.getElementById('aZoom').value / 100;
                 let baseAfterScale = (W / loadedAfter.width);
                 let aW = loadedAfter.width * baseAfterScale * aZoom;
                 let aH = loadedAfter.height * baseAfterScale * aZoom;
 
-                // Position After at H * 0.68 (the vertical visual center of bottom cutout)
                 let aX = (W / 2) + (document.getElementById('aX').value / 100) * (W / 2);
-                let aY = (H * 0.685) + (document.getElementById('aY').value / 100) * (H * 0.36);
+                let aY = (H * 0.715) + (document.getElementById('aY').value / 100) * (H * 0.35);
 
                 ctx.save();
                 ctx.beginPath();
-                ctx.rect(0, H / 2, W, H / 2);
+                ctx.rect(0, H * 0.50, W, H * 0.50);
                 ctx.clip();
                 ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
                 ctx.restore();
 
             } else {
-                // SIDE-BY-SIDE (VERTICAL / VERTICAL) SQUARE
+                // SIDE-BY-SIDE SQUARE (frame_vv_solid)
                 let bZoom = document.getElementById('bZoom').value / 100;
                 let bX = (W / 4) + (document.getElementById('bX').value / 100) * (W / 2);
                 let bY = (H / 2) + (document.getElementById('bY').value / 100) * (H / 2);
@@ -235,48 +230,59 @@
             }
 
             // LAYER 3: EXACT-CUT SANDWICH OVERLAY STAMPS
-            let topH, botY, botH, divX, divY, divW, divH, badgeX, badgeY, badgeW, badgeH, edgeW;
-            
             if (frameFilename === 'frame_stack_solid.jpeg') {
-                // 4:5 Vertical Stack coordinates
-                topH = H * 0.144;
-                botY = H * 0.892; botH = H * 0.108;
-                divY = H * 0.484; divH = H * 0.052;
-                badgeX = W * 0.718; badgeY = 0; badgeW = W * 0.224; badgeH = H * 0.188;
-                edgeW = W * 0.038;
+                // 4:5 Stack Tuned Overlays
+                const topH = H * 0.150;
+                const botY = H * 0.895;
+                const botH = H * 0.105;
+                const divY = H * 0.478;
+                const divH = H * 0.052;
+                
+                // Top Right Badge
+                const badgeX = W * 0.730;
+                const badgeY = 0;
+                const badgeW = W * 0.205;
+                const badgeH = H * 0.198;
+                
+                // After Box Cutout Stamp
+                const afterBoxX = W * 0.570;
+                const afterBoxY = H * 0.465;
+                const afterBoxW = W * 0.400;
+                const afterBoxH = H * 0.105;
 
-                // Top Header Line
+                const edgeW = W * 0.046;
+
+                // 1. Top Header
                 ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
-                // Bottom Footer Line
+                // 2. Bottom Footer
                 ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
-                // Center Horizontal Divider
+                // 3. Center Horizontal Divider Bar
                 ctx.drawImage(frameImg, 0, divY, W, divH, 0, divY, W, divH);
-                // Top Right Logo Badge (Specific to 4:5 Stack)
+                // 4. Stamped AFTER Box (Protects text & border)
+                ctx.drawImage(frameImg, afterBoxX, afterBoxY, afterBoxW, afterBoxH, afterBoxX, afterBoxY, afterBoxW, afterBoxH);
+                // 5. Top Right Logo Badge
                 ctx.drawImage(frameImg, badgeX, badgeY, badgeW, badgeH, badgeX, badgeY, badgeW, badgeH);
-                // Left Outer Border
+                // 6. Left & Right Outer Borders
                 ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
-                // Right Outer Border
                 ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
 
             } else {
-                // Square (1:1) tuned coordinates
-                topH = H * 0.168;
-                botY = H * 0.872; botH = H * 0.128;
-                divX = W * 0.470; divW = W * 0.060;
-                badgeX = W * 0.400; badgeW = W * 0.200; badgeH = H * 0.215;
-                edgeW = W * 0.045;
+                // 1:1 Square (frame_vv_solid)
+                const topH = H * 0.168;
+                const botY = H * 0.872;
+                const botH = H * 0.128;
+                const divX = W * 0.470;
+                const divW = W * 0.060;
+                const badgeX = W * 0.400;
+                const badgeW = W * 0.200;
+                const badgeH = H * 0.215;
+                const edgeW = W * 0.045;
 
-                // Top Header Line
                 ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
-                // Bottom Footer Line
                 ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
-                // Center Thin Double Divider
                 ctx.drawImage(frameImg, divX, 0, divW, H, divX, 0, divW, H);
-                // Top Center Logo Badge
                 ctx.drawImage(frameImg, badgeX, 0, badgeW, badgeH, badgeX, 0, badgeW, badgeH);
-                // Left Outer Border
                 ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
-                // Right Outer Border
                 ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
             }
 
