@@ -56,7 +56,7 @@
             </div>
         </div>
 
-        <button onclick="generateShowcase()">Generate Showcase</button>
+        <button onclick="manualGenerate()">Generate Showcase</button>
         <button id="downloadBtn" style="display:none; background:#2e7d32;" onclick="downloadImage()">Download to Device</button>
     </div>
 
@@ -85,4 +85,85 @@
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = () => {
-                alert("Could not load frame image. Make sure your solid background
+                alert("Could not load frame image. Make sure your solid background JPEG files are uploaded to GitHub.");
+                reject();
+            };
+            if (typeof source === 'string') {
+                img.src = source; 
+            } else {
+                const reader = new FileReader();
+                reader.onload = (e) => img.src = e.target.result;
+                reader.readAsDataURL(source);
+            }
+        });
+    }
+
+    function manualGenerate() {
+        if (!loadedBefore || !loadedAfter) {
+            alert("Please upload both a Before and After photo first before generating.");
+            return;
+        }
+        generateShowcase();
+    }
+
+    async function generateShowcase() {
+        if (!loadedBefore || !loadedAfter) return; // Silently wait until both are uploaded for live sliders
+
+        const frameFilename = document.getElementById('layoutSelect').value;
+        const frameImg = await loadImage(frameFilename);
+
+        const W = frameImg.width;
+        const H = frameImg.height;
+        canvas.width = W;
+        canvas.height = H;
+
+        // LAYER 1: BASE BACKGROUND (The solid frame)
+        ctx.drawImage(frameImg, 0, 0, W, H);
+
+        // LAYER 2: DRAW PHOTOS
+        // Before Photo (Clipped tightly to the exact center line)
+        let bZoom = document.getElementById('bZoom').value / 100;
+        let bX = (W / 4) + (document.getElementById('bX').value / 100) * (W / 2);
+        let bY = (H / 2) + (document.getElementById('bY').value / 100) * (H / 2);
+        let bW = loadedBefore.width * bZoom;
+        let bH = loadedBefore.height * bZoom;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, W / 2, H);
+        ctx.clip();
+        ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
+        ctx.restore();
+
+        // After Photo (Clipped to right half)
+        let aZoom = document.getElementById('aZoom').value / 100;
+        let aX = (W * 0.75) + (document.getElementById('aX').value / 100) * (W / 2);
+        let aY = (H / 2) + (document.getElementById('aY').value / 100) * (H / 2);
+        let aW = loadedAfter.width * aZoom;
+        let aH = loadedAfter.height * aZoom;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(W / 2, 0, W / 2, H);
+        ctx.clip();
+        ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
+        ctx.restore();
+
+        // LAYER 3: EXACT-CUT SANDWICH OVERLAY STAMPS
+        let topH, botY, botH, divX, divW, badgeX, badgeW, badgeH, edgeW;
+        
+        // Dynamically adjust the scalpel cuts based on the layout shape
+        if (frameFilename === 'frame_hh.jpeg') {
+            topH = H * 0.18; botY = H * 0.82; botH = H * 0.18;
+            divX = W * 0.48; divW = W * 0.04;
+            badgeX = W * 0.40; badgeW = W * 0.20; badgeH = H * 0.28;
+            edgeW = W * 0.035;
+        } else {
+            // Square (1:1) specific tight cuts
+            topH = H * 0.165; botY = H * 0.86; botH = H * 0.14;
+            divX = W * 0.47; divW = W * 0.06;
+            badgeX = W * 0.35; badgeW = W * 0.30; badgeH = H * 0.28;
+            edgeW = W * 0.035;
+        }
+
+        // Top Header
