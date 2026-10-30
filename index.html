@@ -29,10 +29,11 @@
     
     <div class="controls">
         <div class="file-upload">
-            <label>1. Select Master Template (Solid Backgrounds)</label>
+            <label>1. Select Master Template</label>
+            <!-- Flipped so frame_vv_solid.jpeg is the default selected option -->
             <select id="layoutSelect" onchange="generateShowcase()">
+                <option value="frame_vv_solid.jpeg" selected>Vertical / Vertical (1:1 Square)</option>
                 <option value="frame_hh.jpeg">Horizontal / Horizontal (16:9)</option>
-                <option value="frame_vv_solid.jpeg">Vertical / Vertical (1:1 Square)</option>
             </select>
         </div>
 
@@ -85,8 +86,9 @@
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = () => {
-                alert("Could not load frame image. Make sure your solid background JPEG files are uploaded to GitHub.");
-                reject();
+                const filename = typeof source === 'string' ? source : 'Uploaded File';
+                alert(`CRITICAL ERROR: Could not load the image: ${filename}. Make sure it is uploaded to GitHub and named exactly like that.`);
+                reject(new Error(`Failed to load ${filename}`));
             };
             if (typeof source === 'string') {
                 img.src = source; 
@@ -100,70 +102,100 @@
 
     function manualGenerate() {
         if (!loadedBefore || !loadedAfter) {
-            alert("Please upload both a Before and After photo first before generating.");
+            alert("Please upload BOTH a Before and After photo first.");
             return;
         }
         generateShowcase();
     }
 
     async function generateShowcase() {
-        if (!loadedBefore || !loadedAfter) return; // Silently wait until both are uploaded for live sliders
+        // Prevent silent failure: wait until both are uploaded before trying to draw live slider updates
+        if (!loadedBefore || !loadedAfter) return; 
 
-        const frameFilename = document.getElementById('layoutSelect').value;
-        const frameImg = await loadImage(frameFilename);
+        try {
+            const frameFilename = document.getElementById('layoutSelect').value;
+            const frameImg = await loadImage(frameFilename);
 
-        const W = frameImg.width;
-        const H = frameImg.height;
-        canvas.width = W;
-        canvas.height = H;
+            const W = frameImg.width;
+            const H = frameImg.height;
+            canvas.width = W;
+            canvas.height = H;
 
-        // LAYER 1: BASE BACKGROUND (The solid frame)
-        ctx.drawImage(frameImg, 0, 0, W, H);
+            // LAYER 1: BASE BACKGROUND (The solid frame)
+            ctx.drawImage(frameImg, 0, 0, W, H);
 
-        // LAYER 2: DRAW PHOTOS
-        // Before Photo (Clipped tightly to the exact center line)
-        let bZoom = document.getElementById('bZoom').value / 100;
-        let bX = (W / 4) + (document.getElementById('bX').value / 100) * (W / 2);
-        let bY = (H / 2) + (document.getElementById('bY').value / 100) * (H / 2);
-        let bW = loadedBefore.width * bZoom;
-        let bH = loadedBefore.height * bZoom;
+            // LAYER 2: DRAW PHOTOS
+            // Before Photo (Clipped tightly to the exact center line)
+            let bZoom = document.getElementById('bZoom').value / 100;
+            let bX = (W / 4) + (document.getElementById('bX').value / 100) * (W / 2);
+            let bY = (H / 2) + (document.getElementById('bY').value / 100) * (H / 2);
+            let bW = loadedBefore.width * bZoom;
+            let bH = loadedBefore.height * bZoom;
 
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, 0, W / 2, H);
-        ctx.clip();
-        ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
-        ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, W / 2, H);
+            ctx.clip();
+            ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
+            ctx.restore();
 
-        // After Photo (Clipped to right half)
-        let aZoom = document.getElementById('aZoom').value / 100;
-        let aX = (W * 0.75) + (document.getElementById('aX').value / 100) * (W / 2);
-        let aY = (H / 2) + (document.getElementById('aY').value / 100) * (H / 2);
-        let aW = loadedAfter.width * aZoom;
-        let aH = loadedAfter.height * aZoom;
+            // After Photo (Clipped to right half)
+            let aZoom = document.getElementById('aZoom').value / 100;
+            let aX = (W * 0.75) + (document.getElementById('aX').value / 100) * (W / 2);
+            let aY = (H / 2) + (document.getElementById('aY').value / 100) * (H / 2);
+            let aW = loadedAfter.width * aZoom;
+            let aH = loadedAfter.height * aZoom;
 
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(W / 2, 0, W / 2, H);
-        ctx.clip();
-        ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
-        ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(W / 2, 0, W / 2, H);
+            ctx.clip();
+            ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
+            ctx.restore();
 
-        // LAYER 3: EXACT-CUT SANDWICH OVERLAY STAMPS
-        let topH, botY, botH, divX, divW, badgeX, badgeW, badgeH, edgeW;
-        
-        // Dynamically adjust the scalpel cuts based on the layout shape
-        if (frameFilename === 'frame_hh.jpeg') {
-            topH = H * 0.18; botY = H * 0.82; botH = H * 0.18;
-            divX = W * 0.48; divW = W * 0.04;
-            badgeX = W * 0.40; badgeW = W * 0.20; badgeH = H * 0.28;
-            edgeW = W * 0.035;
-        } else {
-            // Square (1:1) specific tight cuts
-            topH = H * 0.165; botY = H * 0.86; botH = H * 0.14;
-            divX = W * 0.47; divW = W * 0.06;
-            badgeX = W * 0.35; badgeW = W * 0.30; badgeH = H * 0.28;
-            edgeW = W * 0.035;
+            // LAYER 3: EXACT-CUT SANDWICH OVERLAY STAMPS
+            let topH, botY, botH, divX, divW, badgeX, badgeW, badgeH, edgeW;
+            
+            if (frameFilename === 'frame_hh.jpeg') {
+                topH = H * 0.18; botY = H * 0.82; botH = H * 0.18;
+                divX = W * 0.48; divW = W * 0.04;
+                badgeX = W * 0.40; badgeW = W * 0.20; badgeH = H * 0.28;
+                edgeW = W * 0.035;
+            } else {
+                // Square (1:1) specific tight cuts
+                topH = H * 0.165; botY = H * 0.86; botH = H * 0.14;
+                divX = W * 0.47; divW = W * 0.06;
+                badgeX = W * 0.35; badgeW = W * 0.30; badgeH = H * 0.28;
+                edgeW = W * 0.035;
+            }
+
+            // Top Header Line
+            ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
+            // Bottom Footer Line
+            ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
+            // Center Thin Double Divider
+            ctx.drawImage(frameImg, divX, 0, divW, H, divX, 0, divW, H);
+            // Top Center Logo Badge
+            ctx.drawImage(frameImg, badgeX, 0, badgeW, badgeH, badgeX, 0, badgeW, badgeH);
+            // Left Outer Border
+            ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
+            // Right Outer Border
+            ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
+
+            canvas.style.display = 'block';
+            document.getElementById('downloadBtn').style.display = 'block';
+            
+        } catch (error) {
+            console.error("Error generating showcase:", error);
         }
+    }
 
-        // Top Header
+    function downloadImage() {
+        const link = document.createElement('a');
+        link.download = 'IronFoot_Showcase_Final.jpeg';
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.click();
+    }
+</script>
+</body>
+</html>
