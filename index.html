@@ -11,7 +11,7 @@
         .controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; text-align: left; }
         .file-upload { background: #2a2a2a; padding: 15px; border-radius: 6px; border: 1px solid #333; }
         label { font-weight: bold; display: block; margin-bottom: 8px; color: #aaa; }
-        input[type="file"] { display: block; width: 100%; color: #fff; }
+        input[type="file"], select, input[type="range"] { display: block; width: 100%; color: #fff; }
         select, button { padding: 12px; font-size: 16px; border-radius: 6px; border: none; background: #333; color: #fff; cursor: pointer; }
         button { background: #8B6508; font-weight: bold; text-transform: uppercase; margin-top: 10px; transition: background 0.2s; }
         button:hover { background: #a67c00; }
@@ -36,10 +36,20 @@
 
         <div class="file-upload">
             <label>3. Select Master Template</label>
-            <select id="layoutSelect">
+            <select id="layoutSelect" onchange="generateShowcase()">
                 <option value="frame_hh.jpeg">Horizontal / Horizontal (16:9)</option>
                 <option value="frame_vv.jpeg">Vertical / Vertical (1:1 Square)</option>
             </select>
+        </div>
+
+        <div class="file-upload">
+            <label>4. Adjust BEFORE Photo (Up/Down)</label>
+            <input type="range" id="beforeY" min="0" max="100" value="50" oninput="generateShowcase()">
+        </div>
+
+        <div class="file-upload">
+            <label>5. Adjust AFTER Photo (Up/Down)</label>
+            <input type="range" id="afterY" min="0" max="100" value="50" oninput="generateShowcase()">
         </div>
 
         <button onclick="generateShowcase()">Generate Showcase</button>
@@ -52,6 +62,18 @@
 <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    let loadedBefore = null;
+    let loadedAfter = null;
+
+    document.getElementById('beforeImage').addEventListener('change', async (e) => {
+        loadedBefore = await loadImage(e.target.files[0]);
+        generateShowcase();
+    });
+    
+    document.getElementById('afterImage').addEventListener('change', async (e) => {
+        loadedAfter = await loadImage(e.target.files[0]);
+        generateShowcase();
+    });
 
     function loadImage(source) {
         return new Promise((resolve, reject) => {
@@ -59,10 +81,9 @@
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = () => {
-                alert("Could not load frame image. Make sure your JPEG files are uploaded to GitHub and named exactly matching the dropdown.");
+                alert("Could not load frame image. Make sure your JPEG files are uploaded to GitHub and named correctly.");
                 reject();
             };
-            
             if (typeof source === 'string') {
                 img.src = source; 
             } else {
@@ -73,28 +94,28 @@
         });
     }
 
-    // Changed from Cover to Fit so zero pixels are cropped
-    function drawImageFit(img, x, y, w, h) {
-        const scale = Math.min(w / img.width, h / img.height);
+    // Cover image but with slider-controlled Y-offset panning
+    function drawImagePan(img, x, y, w, h, offsetYPercent) {
+        const scale = Math.max(w / img.width, h / img.height);
         const nw = img.width * scale;
         const nh = img.height * scale;
-        const nx = x + (w - nw) / 2;
-        const ny = y + (h - nh) / 2;
+        const nx = x + (w - nw) / 2; // Always center horizontally
+        
+        // Calculate vertical panning limits so it never shows empty background
+        const maxNy = y;
+        const minNy = y - (nh - h);
+        const ny = minNy + (maxNy - minNy) * (offsetYPercent / 100);
+        
         ctx.drawImage(img, nx, ny, nw, nh);
     }
 
     async function generateShowcase() {
-        const beforeFile = document.getElementById('beforeImage').files[0];
-        const afterFile = document.getElementById('afterImage').files[0];
+        if (!loadedBefore || !loadedAfter) return;
+
         const frameFilename = document.getElementById('layoutSelect').value;
+        const beforeY = 100 - document.getElementById('beforeY').value; // Invert slider for natural feel
+        const afterY = 100 - document.getElementById('afterY').value;
 
-        if (!beforeFile || !afterFile) {
-            alert("Please upload both a Before and After photo.");
-            return;
-        }
-
-        const imgBefore = await loadImage(beforeFile);
-        const imgAfter = await loadImage(afterFile);
         const frameImg = await loadImage(frameFilename);
 
         const W = frameImg.width;
@@ -102,64 +123,39 @@
         canvas.width = W;
         canvas.height = H;
 
-        // 1. DYNAMIC CHROMA-KEY (Create Transparent Frame Cutout)
-        const offCanvas = document.createElement('canvas');
-        offCanvas.width = W;
-        offCanvas.height = H;
-        const offCtx = offCanvas.getContext('2d');
-        offCtx.drawImage(frameImg, 0, 0, W, H);
-        const imgData = offCtx.getImageData(0, 0, W, H);
-        const data = imgData.data;
+        // LAYER 1: Base Frame
+        ctx.drawImage(frameImg, 0, 0, W, H);
 
-        for (let y = 0; y < H; y++) {
-            for (let x = 0; x < W; x++) {
-                const i = (y * W + x) * 4;
-                
-                // Target very bright white (the blank windows are pure white)
-                if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
-                    
-                    // Protect Logo Text
-                    const inLogoText = (x > W * 0.40 && x < W * 0.60 && y < H * 0.22);
-                    // Protect Footer Text
-                    const inFooterText = (y > H * 0.88);
+        // Define overly generous photo bounds (they bleed under the borders to kill the white halo)
+        const leftBox = { x: W * 0.03, y: H * 0.15, w: W * 0.47, h: H * 0.70 };
+        const rightBox = { x: W * 0.50, y: H * 0.15, w: W * 0.47, h: H * 0.70 };
 
-                    if (!inLogoText && !inFooterText) {
-                        data[i+3] = 0; 
-                    }
-                }
-            }
-        }
-        offCtx.putImageData(imgData, 0, 0);
-
-        // 2. DRAW BASE PHOTOS (Strictly inside the windows using FIT)
-        ctx.fillStyle = '#111'; // Clean dark background behind images
-        ctx.fillRect(0, 0, W, H);
-
-        let leftBox, rightBox;
-        if (frameFilename === 'frame_hh.jpeg') {
-            leftBox =  { x: W * 0.038, y: H * 0.178, w: W * 0.448, h: H * 0.675 };
-            rightBox = { x: W * 0.514, y: H * 0.178, w: W * 0.448, h: H * 0.675 };
-        } else {
-            leftBox =  { x: W * 0.035, y: H * 0.165, w: W * 0.445, h: H * 0.678 };
-            rightBox = { x: W * 0.520, y: H * 0.165, w: W * 0.445, h: H * 0.678 };
-        }
-
+        // LAYER 2: Draw Photos with User Panning
         ctx.save();
         ctx.beginPath();
         ctx.rect(leftBox.x, leftBox.y, leftBox.w, leftBox.h);
         ctx.clip();
-        drawImageFit(imgBefore, leftBox.x, leftBox.y, leftBox.w, leftBox.h);
+        drawImagePan(loadedBefore, leftBox.x, leftBox.y, leftBox.w, leftBox.h, beforeY);
         ctx.restore();
 
         ctx.save();
         ctx.beginPath();
         ctx.rect(rightBox.x, rightBox.y, rightBox.w, rightBox.h);
         ctx.clip();
-        drawImageFit(imgAfter, rightBox.x, rightBox.y, rightBox.w, rightBox.h);
+        drawImagePan(loadedAfter, rightBox.x, rightBox.y, rightBox.w, rightBox.h, afterY);
         ctx.restore();
 
-        // 3. DROP THE TRANSPARENT FRAME ON TOP
-        ctx.drawImage(offCanvas, 0, 0, W, H);
+        // LAYER 3: The Frame Stamp Sandwich
+        // Top Header (Covers the top seam)
+        ctx.drawImage(frameImg, 0, 0, W, H * 0.195, 0, 0, W, H * 0.195);
+        // Bottom Footer (Covers the bottom seam)
+        ctx.drawImage(frameImg, 0, H * 0.815, W, H * 0.185, 0, H * 0.815, W, H * 0.185);
+        // Center Pillar & Badge (Covers the middle seam)
+        ctx.drawImage(frameImg, W * 0.35, 0, W * 0.30, H, W * 0.35, 0, W * 0.30, H);
+        // Left Outer Border (Covers the left seam)
+        ctx.drawImage(frameImg, 0, 0, W * 0.045, H, 0, 0, W * 0.045, H);
+        // Right Outer Border (Covers the right seam)
+        ctx.drawImage(frameImg, W * 0.955, 0, W * 0.045, H, W * 0.955, 0, W * 0.045, H);
 
         canvas.style.display = 'block';
         document.getElementById('downloadBtn').style.display = 'block';
