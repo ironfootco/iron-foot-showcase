@@ -11,6 +11,8 @@
         .controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; text-align: left; }
         .file-upload { background: #2a2a2a; padding: 15px; border-radius: 6px; border: 1px solid #333; }
         label { font-weight: bold; display: block; margin-bottom: 8px; color: #aaa; font-size: 14px; }
+        .status-tag { font-size: 12px; font-weight: normal; margin-left: 10px; color: #ff5252; }
+        .status-tag.ready { color: #4caf50; }
         input[type="file"], select { display: block; width: 100%; color: #fff; margin-bottom: 10px; }
         .slider-group { display: flex; gap: 15px; align-items: center; }
         .slider-group div { flex: 1; text-align: center; }
@@ -30,33 +32,33 @@
     <div class="controls">
         <div class="file-upload">
             <label>1. Select Master Template</label>
-            <select id="layoutSelect" onchange="generateShowcase()">
+            <select id="layoutSelect" onchange="runGenerate(false)">
                 <option value="frame_vv_solid.jpeg" selected>Vertical / Vertical (1:1 Square)</option>
                 <option value="frame_hh.jpeg">Horizontal / Horizontal (16:9)</option>
             </select>
         </div>
 
         <div class="file-upload">
-            <label>2. Upload BEFORE Photo</label>
-            <input type="file" id="beforeImage" accept="image/*">
+            <label>2. Upload BEFORE Photo <span id="bStatus" class="status-tag">Missing</span></label>
+            <input type="file" id="beforeImage" accept="image/*" onclick="this.value=null;">
             <div class="slider-group">
-                <div><span class="slider-label">Zoom</span><input type="range" id="bZoom" min="10" max="300" value="100" oninput="generateShowcase()"></div>
-                <div><span class="slider-label">Left / Right</span><input type="range" id="bX" min="-200" max="200" value="0" oninput="generateShowcase()"></div>
-                <div><span class="slider-label">Up / Down</span><input type="range" id="bY" min="-200" max="200" value="0" oninput="generateShowcase()"></div>
+                <div><span class="slider-label">Zoom</span><input type="range" id="bZoom" min="10" max="300" value="100" oninput="runGenerate(false)"></div>
+                <div><span class="slider-label">Left / Right</span><input type="range" id="bX" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
+                <div><span class="slider-label">Up / Down</span><input type="range" id="bY" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
             </div>
         </div>
         
         <div class="file-upload">
-            <label>3. Upload AFTER Photo</label>
-            <input type="file" id="afterImage" accept="image/*">
+            <label>3. Upload AFTER Photo <span id="aStatus" class="status-tag">Missing</span></label>
+            <input type="file" id="afterImage" accept="image/*" onclick="this.value=null;">
             <div class="slider-group">
-                <div><span class="slider-label">Zoom</span><input type="range" id="aZoom" min="10" max="300" value="100" oninput="generateShowcase()"></div>
-                <div><span class="slider-label">Left / Right</span><input type="range" id="aX" min="-200" max="200" value="0" oninput="generateShowcase()"></div>
-                <div><span class="slider-label">Up / Down</span><input type="range" id="aY" min="-200" max="200" value="0" oninput="generateShowcase()"></div>
+                <div><span class="slider-label">Zoom</span><input type="range" id="aZoom" min="10" max="300" value="100" oninput="runGenerate(false)"></div>
+                <div><span class="slider-label">Left / Right</span><input type="range" id="aX" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
+                <div><span class="slider-label">Up / Down</span><input type="range" id="aY" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
             </div>
         </div>
 
-        <button onclick="manualGenerate()">Generate Showcase</button>
+        <button onclick="runGenerate(true)">Generate Showcase</button>
         <button id="downloadBtn" style="display:none; background:#2e7d32;" onclick="downloadImage()">Download to Device</button>
     </div>
 
@@ -70,13 +72,23 @@
     let loadedAfter = null;
 
     document.getElementById('beforeImage').addEventListener('change', async (e) => {
-        loadedBefore = await loadImage(e.target.files[0]);
-        generateShowcase();
+        if (e.target.files && e.target.files[0]) {
+            loadedBefore = await loadImage(e.target.files[0]);
+            const status = document.getElementById('bStatus');
+            status.textContent = 'Loaded ✓';
+            status.className = 'status-tag ready';
+            runGenerate(false);
+        }
     });
     
     document.getElementById('afterImage').addEventListener('change', async (e) => {
-        loadedAfter = await loadImage(e.target.files[0]);
-        generateShowcase();
+        if (e.target.files && e.target.files[0]) {
+            loadedAfter = await loadImage(e.target.files[0]);
+            const status = document.getElementById('aStatus');
+            status.textContent = 'Loaded ✓';
+            status.className = 'status-tag ready';
+            runGenerate(false);
+        }
     });
 
     function loadImage(source) {
@@ -85,30 +97,27 @@
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = () => {
-                const filename = typeof source === 'string' ? source : 'Uploaded File';
-                alert(`CRITICAL ERROR: Could not load the master frame image: ${filename}. Make sure the file exists in your GitHub repository and the spelling is exact.`);
-                reject(new Error(`Failed to load ${filename}`));
+                const name = typeof source === 'string' ? source : 'Uploaded File';
+                alert(`Error loading image: ${name}. Ensure it exists in the repo.`);
+                reject(new Error(`Failed to load ${name}`));
             };
             if (typeof source === 'string') {
-                img.src = source; 
+                img.src = source;
             } else {
                 const reader = new FileReader();
-                reader.onload = (e) => img.src = e.target.result;
+                reader.onload = (e) => { img.src = e.target.result; };
                 reader.readAsDataURL(source);
             }
         });
     }
 
-    function manualGenerate() {
+    async function runGenerate(isManualClick) {
         if (!loadedBefore || !loadedAfter) {
-            alert("Please upload BOTH a Before and After photo first.");
+            if (isManualClick) {
+                alert(`Please upload both photos first.\n- BEFORE: ${loadedBefore ? 'Ready' : 'MISSING'}\n- AFTER: ${loadedAfter ? 'Ready' : 'MISSING'}`);
+            }
             return;
         }
-        generateShowcase();
-    }
-
-    async function generateShowcase() {
-        if (!loadedBefore || !loadedAfter) return; 
 
         try {
             const frameFilename = document.getElementById('layoutSelect').value;
@@ -143,4 +152,56 @@
             let aH = loadedAfter.height * aZoom;
 
             ctx.save();
-            ctx.beginPath
+            ctx.beginPath();
+            ctx.rect(W / 2, 0, W / 2, H);
+            ctx.clip();
+            ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
+            ctx.restore();
+
+            // LAYER 3: EXACT-CUT SANDWICH OVERLAY STAMPS
+            let topH, botY, botH, divX, divW, badgeX, badgeW, badgeH, edgeW;
+            
+            if (frameFilename === 'frame_hh.jpeg') {
+                topH = H * 0.18; botY = H * 0.82; botH = H * 0.18;
+                divX = W * 0.485; divW = W * 0.03;
+                badgeX = W * 0.40; badgeW = W * 0.20; badgeH = H * 0.28;
+                edgeW = W * 0.045;
+            } else {
+                // Square (1:1) tuned coordinates
+                topH = H * 0.168;
+                botY = H * 0.872; botH = H * 0.128;
+                divX = W * 0.47; divW = W * 0.06;
+                badgeX = W * 0.40; badgeW = W * 0.20; badgeH = H * 0.215;
+                edgeW = W * 0.045;
+            }
+
+            // Top Header Line
+            ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
+            // Bottom Footer Line
+            ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
+            // Center Thin Double Divider
+            ctx.drawImage(frameImg, divX, 0, divW, H, divX, 0, divW, H);
+            // Top Center Logo Badge
+            ctx.drawImage(frameImg, badgeX, 0, badgeW, badgeH, badgeX, 0, badgeW, badgeH);
+            // Left Outer Border
+            ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
+            // Right Outer Border
+            ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
+
+            canvas.style.display = 'block';
+            document.getElementById('downloadBtn').style.display = 'block';
+            
+        } catch (error) {
+            alert("Error rendering showcase: " + error.message);
+        }
+    }
+
+    function downloadImage() {
+        const link = document.createElement('a');
+        link.download = 'IronFoot_Showcase_Final.jpeg';
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.click();
+    }
+</script>
+</body>
+</html>
