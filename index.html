@@ -94,14 +94,12 @@
         });
     }
 
-    // Cover image but with slider-controlled Y-offset panning
     function drawImagePan(img, x, y, w, h, offsetYPercent) {
         const scale = Math.max(w / img.width, h / img.height);
         const nw = img.width * scale;
         const nh = img.height * scale;
-        const nx = x + (w - nw) / 2; // Always center horizontally
+        const nx = x + (w - nw) / 2; 
         
-        // Calculate vertical panning limits so it never shows empty background
         const maxNy = y;
         const minNy = y - (nh - h);
         const ny = minNy + (maxNy - minNy) * (offsetYPercent / 100);
@@ -113,7 +111,7 @@
         if (!loadedBefore || !loadedAfter) return;
 
         const frameFilename = document.getElementById('layoutSelect').value;
-        const beforeY = 100 - document.getElementById('beforeY').value; // Invert slider for natural feel
+        const beforeY = 100 - document.getElementById('beforeY').value; 
         const afterY = 100 - document.getElementById('afterY').value;
 
         const frameImg = await loadImage(frameFilename);
@@ -123,14 +121,45 @@
         canvas.width = W;
         canvas.height = H;
 
-        // LAYER 1: Base Frame
-        ctx.drawImage(frameImg, 0, 0, W, H);
+        // 1. SMART CHROMA-KEY (Laser precision window removal)
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = W;
+        offCanvas.height = H;
+        const offCtx = offCanvas.getContext('2d');
+        offCtx.drawImage(frameImg, 0, 0, W, H);
+        const imgData = offCtx.getImageData(0, 0, W, H);
+        const data = imgData.data;
 
-        // Define overly generous photo bounds (they bleed under the borders to kill the white halo)
-        const leftBox = { x: W * 0.03, y: H * 0.15, w: W * 0.47, h: H * 0.70 };
-        const rightBox = { x: W * 0.50, y: H * 0.15, w: W * 0.47, h: H * 0.70 };
+        for (let y = 0; y < H; y++) {
+            for (let x = 0; x < W; x++) {
+                const i = (y * W + x) * 4;
+                const r = data[i], g = data[i+1], b = data[i+2];
 
-        // LAYER 2: Draw Photos with User Panning
+                // Protect specific text zones
+                const inLogoText = (x > W * 0.30 && x < W * 0.70 && y < H * 0.28);
+                const inFooterText = (y > H * 0.82);
+
+                if (!inLogoText && !inFooterText) {
+                    // Identify pixels that are BOTH neutral (white/gray) AND bright.
+                    // This perfectly eats the white windows and the gray edges, but ignores the gold borders.
+                    const isNeutral = Math.abs(r - g) < 30 && Math.abs(g - b) < 30 && Math.abs(r - b) < 30;
+                    const isBright = r > 80 && g > 80 && b > 80;
+
+                    if (isNeutral && isBright) {
+                        data[i+3] = 0; // Make pixel completely transparent
+                    }
+                }
+            }
+        }
+        offCtx.putImageData(imgData, 0, 0);
+
+        // 2. LAYER PHOTOS (Full-bleed halves so they never leave a gap)
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+
+        const leftBox = { x: 0, y: 0, w: W * 0.51, h: H };
+        const rightBox = { x: W * 0.49, y: 0, w: W * 0.51, h: H };
+
         ctx.save();
         ctx.beginPath();
         ctx.rect(leftBox.x, leftBox.y, leftBox.w, leftBox.h);
@@ -145,17 +174,8 @@
         drawImagePan(loadedAfter, rightBox.x, rightBox.y, rightBox.w, rightBox.h, afterY);
         ctx.restore();
 
-        // LAYER 3: The Frame Stamp Sandwich
-        // Top Header (Covers the top seam)
-        ctx.drawImage(frameImg, 0, 0, W, H * 0.195, 0, 0, W, H * 0.195);
-        // Bottom Footer (Covers the bottom seam)
-        ctx.drawImage(frameImg, 0, H * 0.815, W, H * 0.185, 0, H * 0.815, W, H * 0.185);
-        // Center Pillar & Badge (Covers the middle seam)
-        ctx.drawImage(frameImg, W * 0.35, 0, W * 0.30, H, W * 0.35, 0, W * 0.30, H);
-        // Left Outer Border (Covers the left seam)
-        ctx.drawImage(frameImg, 0, 0, W * 0.045, H, 0, 0, W * 0.045, H);
-        // Right Outer Border (Covers the right seam)
-        ctx.drawImage(frameImg, W * 0.955, 0, W * 0.045, H, W * 0.955, 0, W * 0.045, H);
+        // 3. DROP THE PERFECTLY CUT FRAME OVER THE PHOTOS
+        ctx.drawImage(offCanvas, 0, 0, W, H);
 
         canvas.style.display = 'block';
         document.getElementById('downloadBtn').style.display = 'block';
