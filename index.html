@@ -101,21 +101,43 @@
         canvas.width = W;
         canvas.height = H;
 
-        // LAYER 1: Draw the Master Frame Base
-        ctx.drawImage(frameImg, 0, 0, W, H);
+        // 1. DYNAMIC CHROMA-KEY (Create Transparent Frame Cutout)
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = W;
+        offCanvas.height = H;
+        const offCtx = offCanvas.getContext('2d');
+        offCtx.drawImage(frameImg, 0, 0, W, H);
+        const imgData = offCtx.getImageData(0, 0, W, H);
+        const data = imgData.data;
 
-        // Define generous boundary percentages so photos sit slightly under the borders
-        let leftBox, rightBox;
-        if (frameFilename === 'frame_hh.jpeg') {
-            leftBox =  { x: W * 0.038, y: H * 0.178, w: W * 0.448, h: H * 0.675 };
-            rightBox = { x: W * 0.514, y: H * 0.178, w: W * 0.448, h: H * 0.675 };
-        } else {
-            // frame_vv.jpeg
-            leftBox =  { x: W * 0.035, y: H * 0.165, w: W * 0.445, h: H * 0.678 };
-            rightBox = { x: W * 0.520, y: H * 0.165, w: W * 0.445, h: H * 0.678 };
+        for (let y = 0; y < H; y++) {
+            for (let x = 0; x < W; x++) {
+                const i = (y * W + x) * 4;
+                // If pixel is white or light gray...
+                if (data[i] > 200 && data[i+1] > 200 && data[i+2] > 200) {
+                    
+                    // Protect the Logo Badge area at the top
+                    const inBadge = (x > W * 0.25 && x < W * 0.75 && y < H * 0.28);
+                    
+                    // Protect the footer text area at the bottom
+                    const inFooter = (y > H * 0.82);
+
+                    // If it's a white pixel NOT in the protected zones, punch a hole
+                    if (!inBadge && !inFooter) {
+                        data[i+3] = 0; // Set alpha to transparent
+                    }
+                }
+            }
         }
+        offCtx.putImageData(imgData, 0, 0);
 
-        // LAYER 2: Draw Photos
+        // 2. DRAW BASE PHOTOS (Full Bleed so there are no white gaps)
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, W, H);
+
+        const leftBox = { x: 0, y: 0, w: W * 0.51, h: H };
+        const rightBox = { x: W * 0.49, y: 0, w: W * 0.51, h: H };
+
         ctx.save();
         ctx.beginPath();
         ctx.rect(leftBox.x, leftBox.y, leftBox.w, leftBox.h);
@@ -130,13 +152,8 @@
         drawImageCover(imgAfter, rightBox.x, rightBox.y, rightBox.w, rightBox.h);
         ctx.restore();
 
-        // LAYER 3: Slice and Stamp over the seams
-        // Stamps the top header section over the photos
-        ctx.drawImage(frameImg, 0, 0, W, H * 0.19, 0, 0, W, H * 0.19);
-        // Stamps the bottom footer section over the photos
-        ctx.drawImage(frameImg, 0, H * 0.83, W, H * 0.17, 0, H * 0.83, W, H * 0.17);
-        // Stamps the center divider and badge over the middle seam
-        ctx.drawImage(frameImg, W * 0.35, 0, W * 0.30, H, W * 0.35, 0, W * 0.30, H);
+        // 3. DROP THE TRANSPARENT FRAME ON TOP
+        ctx.drawImage(offCanvas, 0, 0, W, H);
 
         canvas.style.display = 'block';
         document.getElementById('downloadBtn').style.display = 'block';
