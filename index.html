@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iron Foot Co. - Showcase Generator</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #121212; color: #fff; padding: 20px; text-align: center; }
+        .container { max-width: 800px; margin: 0 auto; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1 { color: #d4af37; margin-top: 0; }
+        .controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; text-align: left; }
+        .file-upload { background: #2a2a2a; padding: 15px; border-radius: 6px; border: 1px solid #333; }
+        label { font-weight: bold; display: block; margin-bottom: 8px; color: #aaa; }
+        input[type="file"] { display: block; width: 100%; color: #fff; }
+        select, button { padding: 12px; font-size: 16px; border-radius: 6px; border: none; background: #333; color: #fff; cursor: pointer; }
+        button { background: #8B6508; font-weight: bold; text-transform: uppercase; margin-top: 10px; transition: background 0.2s; }
+        button:hover { background: #a67c00; }
+        canvas { max-width: 100%; height: auto; border: 2px solid #8B6508; margin-top: 20px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Iron Foot Showcase Builder</h1>
+    
+    <div class="controls">
+        <div class="file-upload">
+            <label>1. Upload BEFORE Photo</label>
+            <input type="file" id="beforeImage" accept="image/*">
+        </div>
+        
+        <div class="file-upload">
+            <label>2. Upload AFTER Photo</label>
+            <input type="file" id="afterImage" accept="image/*">
+        </div>
+
+        <div class="file-upload">
+            <label>3. Select Layout</label>
+            <select id="layoutSelect">
+                <option value="16:9">16:9 Widescreen (Best for 2 Horizontal Photos)</option>
+                <option value="1:1">1:1 Square (Best for 2 Vertical Photos)</option>
+            </select>
+        </div>
+
+        <button onclick="generateShowcase()">Generate Showcase</button>
+        <button id="downloadBtn" style="display:none; background:#2e7d32;" onclick="downloadImage()">Download to Device</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let generatedImgName = "IronFoot_Showcase.jpg";
+
+    function loadImage(file) {
+        return new Promise((resolve, reject) => {
+            if (!file) { resolve(null); return; }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Draws image inside a bounding box without cropping (Letterbox/Fit)
+    function drawImageFit(img, x, y, w, h) {
+        const scale = Math.min(w / img.width, h / img.height);
+        const nw = img.width * scale;
+        const nh = img.height * scale;
+        const nx = x + (w - nw) / 2;
+        const ny = y + (h - nh) / 2;
+        ctx.drawImage(img, nx, ny, nw, nh);
+    }
+
+    async function generateShowcase() {
+        const beforeFile = document.getElementById('beforeImage').files[0];
+        const afterFile = document.getElementById('afterImage').files[0];
+        const layout = document.getElementById('layoutSelect').value;
+
+        if (!beforeFile || !afterFile) {
+            alert("Please upload both a Before and After photo.");
+            return;
+        }
+
+        const imgBefore = await loadImage(beforeFile);
+        const imgAfter = await loadImage(afterFile);
+
+        // Canvas Setup
+        const width = layout === '16:9' ? 1920 : 1440;
+        const height = layout === '16:9' ? 1080 : 1440;
+        canvas.width = width;
+        canvas.height = height;
+
+        // 1. Draw Background
+        ctx.fillStyle = '#1e1e1e';
+        ctx.fillRect(0, 0, width, height);
+
+        // 2. Define Image Windows
+        const margin = 60;
+        const topHeaderSpace = 180;
+        const bottomFooterSpace = 200;
+        const dividerWidth = 20;
+        
+        const photoWidth = (width - (margin * 2) - dividerWidth) / 2;
+        const photoHeight = height - topHeaderSpace - bottomFooterSpace;
+
+        const leftBox = { x: margin, y: topHeaderSpace, w: photoWidth, h: photoHeight };
+        const rightBox = { x: margin + photoWidth + dividerWidth, y: topHeaderSpace, w: photoWidth, h: photoHeight };
+
+        // 3. Draw Photos (Uncropped)
+        drawImageFit(imgBefore, leftBox.x, leftBox.y, leftBox.w, leftBox.h);
+        drawImageFit(imgAfter, rightBox.x, rightBox.y, rightBox.w, rightBox.h);
+
+        // 4. Draw Frames/Borders
+        ctx.strokeStyle = '#8B6508'; // Bronze
+        ctx.lineWidth = 8;
+        // Outer border
+        ctx.strokeRect(margin / 2, margin / 2, width - margin, height - margin);
+        // Divider
+        ctx.fillStyle = '#111';
+        ctx.fillRect(width/2 - dividerWidth/2, margin/2, dividerWidth, height - margin);
+        ctx.strokeRect(width/2 - dividerWidth/2, margin/2, dividerWidth, height - margin);
+
+        // 5. Draw Headers
+        ctx.textAlign = "center";
+        ctx.fillStyle = '#d4af37'; // Gold
+        
+        // BEFORE Header
+        ctx.font = "bold 65px Arial";
+        ctx.fillText("BEFORE", leftBox.x + (leftBox.w / 2), 110);
+        ctx.font = "24px Arial";
+        ctx.fillStyle = '#ccc';
+        ctx.fillText("NO JOB TOO SMALL", leftBox.x + (leftBox.w / 2), 150);
+
+        // AFTER Header
+        ctx.fillStyle = '#d4af37';
+        ctx.font = "bold 65px Arial";
+        ctx.fillText("AFTER", rightBox.x + (rightBox.w / 2), 110);
+        ctx.font = "24px Arial";
+        ctx.fillStyle = '#ccc';
+        ctx.fillText("FROM SMALL REPAIRS TO COMPLETE CARE", rightBox.x + (rightBox.w / 2), 150);
+
+        // 6. Draw Logo Box (Center Top)
+        const logoSize = 160;
+        ctx.fillStyle = '#111';
+        ctx.fillRect((width/2) - (logoSize/2), 30, logoSize, logoSize);
+        ctx.strokeRect((width/2) - (logoSize/2), 30, logoSize, logoSize);
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = "bold 36px Impact, sans-serif";
+        ctx.fillText("IRON", width/2, 90);
+        ctx.fillText("FOOT CO.", width/2, 140);
+
+        // 7. Draw Footer
+        const footerY = height - 100;
+        ctx.fillStyle = '#d4af37'; // Gold
+        ctx.font = "bold 60px Arial";
+        ctx.fillText("IRON FOOT COMPANY", width/2, footerY);
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = "bold 35px Arial";
+        ctx.textAlign = "right";
+        ctx.fillText("SOUTH SHORE, MA", (width/2) - 350, footerY - 5);
+        ctx.textAlign = "left";
+        ctx.fillText("(781) 412-7459", (width/2) + 360, footerY - 5);
+
+        ctx.textAlign = "center";
+        ctx.font = "22px Arial";
+        ctx.fillStyle = '#aaa';
+        ctx.fillText("Property Management • Handyman • General Maintenance • Restoration • Registered and Insured • HIC#212688", width/2, footerY + 50);
+
+        // Show canvas and download button
+        canvas.style.display = 'block';
+        document.getElementById('downloadBtn').style.display = 'block';
+    }
+
+    function downloadImage() {
+        const link = document.createElement('a');
+        link.download = 'IronFoot_BeforeAfter.jpg';
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.click();
+    }
+</script>
+</body>
+</html>
