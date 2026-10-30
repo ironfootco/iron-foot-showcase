@@ -158,12 +158,12 @@
                 badgeX = W * 0.40; badgeW = W * 0.20; badgeH = H * 0.28;
                 edgeW = W * 0.045;
             } else {
-                // Square (1:1) specific razor-tight cuts pulled from the actual pixels
-                topH = H * 0.16;                // Header stamp ends exactly at the gold line
-                botY = H * 0.886; botH = H * 0.114; // Footer stamp starts exactly at the lower gold line
-                divX = W * 0.485; divW = W * 0.03;  // Center divider is super thin
-                badgeX = W * 0.375; badgeW = W * 0.25; badgeH = H * 0.215; // Logo badge is perfectly wrapped
-                edgeW = W * 0.045;              // Outer borders expanded just enough to stop bleed
+                // Square (1:1) dial-in adjustments
+                topH = H * 0.16;                
+                botY = H * 0.875; botH = H * 0.125;  // Raised to cover the bottom bleed
+                divX = W * 0.4775; divW = W * 0.045; // Widened to cover the center seam
+                badgeX = W * 0.39; badgeW = W * 0.22; badgeH = H * 0.215; // Tightened left and right edges
+                edgeW = W * 0.045;              
             }
 
             // Top Header Line
