@@ -37,10 +37,8 @@
         <div class="file-upload">
             <label>3. Select Master Template</label>
             <select id="layoutSelect">
-                <option value="frame_hh.png">Horizontal / Horizontal (16:9)</option>
-                <option value="frame_vv.png">Vertical / Vertical (1:1 Square)</option>
-                <option value="frame_hv.png">Horizontal Left / Vertical Right</option>
-                <option value="frame_vh.png">Vertical Left / Horizontal Right</option>
+                <option value="frame_hh.jpg">Horizontal / Horizontal (16:9)</option>
+                <option value="frame_vv.jpg">Vertical / Vertical (1:1 Square)</option>
             </select>
         </div>
 
@@ -61,14 +59,13 @@
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = () => {
-                alert("Could not load frame overlay. Make sure your PNG files are uploaded to GitHub.");
+                alert("Could not load frame image. Make sure your JPG files are uploaded to GitHub and named correctly.");
                 reject();
             };
             
             if (typeof source === 'string') {
-                img.src = source; // Load frame PNG from URL
+                img.src = source; 
             } else {
-                // Load uploaded user photo
                 const reader = new FileReader();
                 reader.onload = (e) => img.src = e.target.result;
                 reader.readAsDataURL(source);
@@ -76,7 +73,7 @@
         });
     }
 
-    // Scales image to fill the given area (Cover) so there are no empty gaps behind the frame
+    // Scales image to completely cover the target box without stretching
     function drawImageCover(img, x, y, w, h) {
         const scale = Math.max(w / img.width, h / img.height);
         const nw = img.width * scale;
@@ -96,33 +93,54 @@
             return;
         }
 
-        // Load the photos and the selected transparent frame overlay
         const imgBefore = await loadImage(beforeFile);
         const imgAfter = await loadImage(afterFile);
         const frameImg = await loadImage(frameFilename);
 
-        // Set canvas to match the master frame's exact dimensions
         canvas.width = frameImg.width;
         canvas.height = frameImg.height;
 
-        // Draw the user photos UNDERNEATH the frame
-        // We roughly split the canvas in half. The transparent frame will cover the rough edges in the middle.
-        const halfWidth = canvas.width / 2;
-        drawImageCover(imgBefore, 0, 0, halfWidth + 50, canvas.height); // Added 50px bleed to hide the seam under the center post
-        drawImageCover(imgAfter, halfWidth - 50, 0, halfWidth + 50, canvas.height);
-
-        // Drop the Master Frame PNG OVER the photos
+        // 1. Draw the Master Frame FIRST (on the bottom)
         ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
 
-        // Show canvas and download button
+        // 2. Define the cutout boxes for the photos to paste INTO
+        // Nudge these numbers if the photos overlap the bronze borders on your specific JPGs
+        let leftBox, rightBox;
+
+        if (frameFilename === 'frame_hh.jpg') {
+            // Approximated for 1920x1080 16:9 layout
+            leftBox = { x: 38, y: 195, w: 900, h: 740 };
+            rightBox = { x: 982, y: 195, w: 900, h: 740 };
+        } else {
+            // Approximated for 1440x1440 1:1 layout
+            leftBox = { x: 42, y: 200, w: 660, h: 1080 };
+            rightBox = { x: 738, y: 200, w: 660, h: 1080 };
+        }
+
+        // 3. Draw BEFORE Photo with Clipping Mask (so it doesn't bleed over borders)
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(leftBox.x, leftBox.y, leftBox.w, leftBox.h);
+        ctx.clip();
+        drawImageCover(imgBefore, leftBox.x, leftBox.y, leftBox.w, leftBox.h);
+        ctx.restore();
+
+        // 4. Draw AFTER Photo with Clipping Mask
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(rightBox.x, rightBox.y, rightBox.w, rightBox.h);
+        ctx.clip();
+        drawImageCover(imgAfter, rightBox.x, rightBox.y, rightBox.w, rightBox.h);
+        ctx.restore();
+
         canvas.style.display = 'block';
         document.getElementById('downloadBtn').style.display = 'block';
     }
 
     function downloadImage() {
         const link = document.createElement('a');
-        link.download = 'IronFoot_Showcase_Final.png';
-        link.href = canvas.toDataURL('image/png');
+        link.download = 'IronFoot_Showcase_Final.jpg';
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
         link.click();
     }
 </script>
