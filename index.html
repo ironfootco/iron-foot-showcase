@@ -119,7 +119,7 @@
             canvas.width = W;
             canvas.height = H;
 
-            // LAYER 1: BASE BACKGROUND (The solid frame)
+            // LAYER 1: BASE BACKGROUND
             ctx.drawImage(frameImg, 0, 0, W, H);
 
             // LAYER 2: DRAW PHOTOS
@@ -136,63 +136,4 @@
             ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
             ctx.restore();
 
-            let aZoom = document.getElementById('aZoom').value / 100;
-            let aX = (W * 0.75) + (document.getElementById('aX').value / 100) * (W / 2);
-            let aY = (H / 2) + (document.getElementById('aY').value / 100) * (H / 2);
-            let aW = loadedAfter.width * aZoom;
-            let aH = loadedAfter.height * aZoom;
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(W / 2, 0, W / 2, H);
-            ctx.clip();
-            ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
-            ctx.restore();
-
-            // LAYER 3: EXACT-CUT SANDWICH OVERLAY STAMPS
-            let topH, botY, botH, divX, divW, badgeX, badgeW, badgeH, edgeW;
-            
-            if (frameFilename === 'frame_hh.jpeg') {
-                topH = H * 0.18; botY = H * 0.82; botH = H * 0.18;
-                divX = W * 0.485; divW = W * 0.03;
-                badgeX = W * 0.40; badgeW = W * 0.20; badgeH = H * 0.28;
-                edgeW = W * 0.045;
-            } else {
-                // Square (1:1) dial-in adjustments
-                topH = H * 0.16;                
-                botY = H * 0.875; botH = H * 0.125;  // Raised to cover the bottom bleed
-                divX = W * 0.4775; divW = W * 0.045; // Widened to cover the center seam
-                badgeX = W * 0.39; badgeW = W * 0.22; badgeH = H * 0.215; // Tightened left and right edges
-                edgeW = W * 0.045;              
-            }
-
-            // Top Header Line
-            ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
-            // Bottom Footer Line
-            ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
-            // Center Thin Double Divider
-            ctx.drawImage(frameImg, divX, 0, divW, H, divX, 0, divW, H);
-            // Top Center Logo Badge
-            ctx.drawImage(frameImg, badgeX, 0, badgeW, badgeH, badgeX, 0, badgeW, badgeH);
-            // Left Outer Border
-            ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
-            // Right Outer Border
-            ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
-
-            canvas.style.display = 'block';
-            document.getElementById('downloadBtn').style.display = 'block';
-            
-        } catch (error) {
-            console.error("Error generating showcase:", error);
-        }
-    }
-
-    function downloadImage() {
-        const link = document.createElement('a');
-        link.download = 'IronFoot_Showcase_Final.jpeg';
-        link.href = canvas.toDataURL('image/jpeg', 0.9);
-        link.click();
-    }
-</script>
-</body>
-</html>
+            let aZoom = document.getElementById('aZoom
