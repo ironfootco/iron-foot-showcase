@@ -37,8 +37,8 @@
         <div class="file-upload">
             <label>3. Select Master Template</label>
             <select id="layoutSelect">
-                <option value="frame_hh.jpg">Horizontal / Horizontal (16:9)</option>
-                <option value="frame_vv.jpg">Vertical / Vertical (1:1 Square)</option>
+                <option value="frame_hh.jpeg">Horizontal / Horizontal (16:9)</option>
+                <option value="frame_vv.jpeg">Vertical / Vertical (1:1 Square)</option>
             </select>
         </div>
 
@@ -59,7 +59,7 @@
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = () => {
-                alert("Could not load frame image. Make sure your JPG files are uploaded to GitHub and named correctly.");
+                alert("Could not load frame image. Make sure your JPEG files are uploaded to GitHub and named exactly matching the dropdown.");
                 reject();
             };
             
@@ -101,23 +101,21 @@
         canvas.width = W;
         canvas.height = H;
 
-        // --- LAYER 1: Base & User Photos ---
-        // Clear canvas
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, W, H);
+        // LAYER 1: Draw the Master Frame Base
+        ctx.drawImage(frameImg, 0, 0, W, H);
 
-        // Precise boundary percentages to place photos inside layout windows
+        // Define generous boundary percentages so photos sit slightly under the borders
         let leftBox, rightBox;
-        if (frameFilename === 'frame_hh.jpg') {
+        if (frameFilename === 'frame_hh.jpeg') {
             leftBox =  { x: W * 0.038, y: H * 0.178, w: W * 0.448, h: H * 0.675 };
             rightBox = { x: W * 0.514, y: H * 0.178, w: W * 0.448, h: H * 0.675 };
         } else {
-            // Adjust vertical bounds (Square 1:1) to remain inside framing lines and away from badge
+            // frame_vv.jpeg
             leftBox =  { x: W * 0.035, y: H * 0.165, w: W * 0.445, h: H * 0.678 };
             rightBox = { x: W * 0.520, y: H * 0.165, w: W * 0.445, h: H * 0.678 };
         }
 
-        // Clip and Draw BEFORE Photo (Bottom Left)
+        // LAYER 2: Draw Photos
         ctx.save();
         ctx.beginPath();
         ctx.rect(leftBox.x, leftBox.y, leftBox.w, leftBox.h);
@@ -125,7 +123,6 @@
         drawImageCover(imgBefore, leftBox.x, leftBox.y, leftBox.w, leftBox.h);
         ctx.restore();
 
-        // Clip and Draw AFTER Photo (Bottom Right)
         ctx.save();
         ctx.beginPath();
         ctx.rect(rightBox.x, rightBox.y, rightBox.w, rightBox.h);
@@ -133,25 +130,21 @@
         drawImageCover(imgAfter, rightBox.x, rightBox.y, rightBox.w, rightBox.h);
         ctx.restore();
 
-        // --- LAYER 2: The Master Frame ---
-        // Overlay the frame on top of the images.
-        // First, clip the draw state so the frame image ONLY draws on non-photo areas (overlay borders, headers, badges)
-        ctx.save();
-        
-        // Inverse clip: Define clipping paths but exclude the photo window rects.
-        // Draw the frame overlay so the "Before"/"After" text and edge borders overlap the photo seams naturally,
-        // while the photos appear in the open window spaces underneath the badge and gold accents.
-        ctx.drawImage(frameImg, 0, 0, W, H);
-        ctx.restore();
+        // LAYER 3: Slice and Stamp over the seams
+        // Stamps the top header section over the photos
+        ctx.drawImage(frameImg, 0, 0, W, H * 0.19, 0, 0, W, H * 0.19);
+        // Stamps the bottom footer section over the photos
+        ctx.drawImage(frameImg, 0, H * 0.83, W, H * 0.17, 0, H * 0.83, W, H * 0.17);
+        // Stamps the center divider and badge over the middle seam
+        ctx.drawImage(frameImg, W * 0.35, 0, W * 0.30, H, W * 0.35, 0, W * 0.30, H);
 
-        // Show canvas and download button
         canvas.style.display = 'block';
         document.getElementById('downloadBtn').style.display = 'block';
     }
 
     function downloadImage() {
         const link = document.createElement('a');
-        link.download = 'IronFoot_Showcase_Final.jpg';
+        link.download = 'IronFoot_Showcase_Final.jpeg';
         link.href = canvas.toDataURL('image/jpeg', 0.9);
         link.click();
     }
