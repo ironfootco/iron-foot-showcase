@@ -2,22 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Iron Foot Co. - Showcase Generator</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background-color: #121212; color: #fff; padding: 20px; text-align: center; }
+        body { font-family: -apple-system, sans-serif; background-color: #121212; color: #fff; padding: 15px; text-align: center; margin: 0; }
         .container { max-width: 800px; margin: 0 auto; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h1 { color: #d4af37; margin-top: 0; }
+        h1 { color: #d4af37; margin-top: 0; font-size: 24px; }
         .controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; text-align: left; }
         .file-upload { background: #2a2a2a; padding: 15px; border-radius: 6px; border: 1px solid #333; }
         label { font-weight: bold; display: block; margin-bottom: 8px; color: #aaa; font-size: 14px; }
         .status-tag { font-size: 12px; font-weight: normal; margin-left: 10px; color: #ff5252; }
         .status-tag.ready { color: #4caf50; }
-        input[type="file"], select { display: block; width: 100%; color: #fff; margin-bottom: 10px; }
+        input[type="file"], select { display: block; width: 100%; color: #fff; margin-bottom: 10px; font-size: 14px; }
         .slider-group { display: flex; gap: 15px; align-items: center; margin-bottom: 10px; }
         .slider-group div { flex: 1; text-align: center; }
         .slider-group input[type="range"] { width: 100%; margin-top: 5px; }
-        .slider-label { font-size: 12px; color: #888; text-transform: uppercase; }
+        .slider-label { font-size: 11px; color: #888; text-transform: uppercase; }
         .btn-center { 
             background: #444; 
             color: #ddd; 
@@ -36,7 +36,30 @@
         select, button.main-btn { padding: 12px; font-size: 16px; border-radius: 6px; border: none; background: #333; color: #fff; cursor: pointer; }
         button.main-btn { background: #8B6508; font-weight: bold; text-transform: uppercase; margin-top: 10px; transition: background 0.2s; width: 100%; }
         button.main-btn:hover { background: #a67c00; }
-        canvas { max-width: 100%; height: auto; border: 2px solid #8B6508; margin-top: 20px; display: none; }
+        
+        .gesture-hint {
+            display: none;
+            font-size: 12px;
+            color: #d4af37;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        /* Canvas with touch gesture support */
+        canvas { 
+            max-width: 100%; 
+            height: auto; 
+            border: 2px solid #8B6508; 
+            margin-top: 10px; 
+            display: none;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
     </style>
 </head>
 <body>
@@ -79,6 +102,7 @@
         <button id="downloadBtn" class="main-btn" style="display:none; background:#2e7d32;" onclick="downloadImage()">Download to Device</button>
     </div>
 
+    <div id="gestureHint" class="gesture-hint">👆 Tap & drag photos to reposition • Pinch with 2 fingers to zoom</div>
     <canvas id="canvas"></canvas>
 </div>
 
@@ -253,17 +277,11 @@
 
                 const edgeW = W * 0.052;
 
-                // 1. Top Header
                 ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
-                // 2. Bottom Footer
                 ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
-                // 3. Center Horizontal Divider Bar
                 ctx.drawImage(frameImg, 0, divY, W, divH, 0, divY, W, divH);
-                // 4. Stamped AFTER Box
                 ctx.drawImage(frameImg, afterBoxX, afterBoxY, afterBoxW, afterBoxH, afterBoxX, afterBoxY, afterBoxW, afterBoxH);
-                // 5. Top Right Logo Badge
                 ctx.drawImage(frameImg, badgeX, badgeY, badgeW, badgeH, badgeX, badgeY, badgeW, badgeH);
-                // 6. Left & Right Outer Borders
                 ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
                 ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
 
@@ -275,6 +293,7 @@
                 const divX = W * 0.470;
                 const divW = W * 0.060;
                 const badgeX = W * 0.400;
+                const badgeY = 0; // Fixed: badgeY was previously missing!
                 const badgeW = W * 0.200;
                 const badgeH = H * 0.215;
                 const edgeW = W * 0.045;
@@ -282,13 +301,14 @@
                 ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
                 ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
                 ctx.drawImage(frameImg, divX, 0, divW, H, divX, 0, divW, H);
-                ctx.drawImage(frameImg, badgeX, 0, badgeW, badgeH, badgeX, 0, badgeW, badgeH);
+                ctx.drawImage(frameImg, badgeX, badgeY, badgeW, badgeH, badgeX, badgeY, badgeW, badgeH);
                 ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
                 ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
             }
 
             canvas.style.display = 'block';
             document.getElementById('downloadBtn').style.display = 'block';
+            document.getElementById('gestureHint').style.display = 'block';
             
         } catch (error) {
             alert("Error rendering showcase: " + error.message);
@@ -301,6 +321,140 @@
         link.href = canvas.toDataURL('image/jpeg', 0.9);
         link.click();
     }
+
+    // ==========================================
+    // TOUCH, DRAG & PINCH-TO-ZOOM INTERACTION
+    // ==========================================
+    let activeTarget = null; // 'before' or 'after'
+    let startX = 0, startY = 0;
+    let initialSliderX = 0, initialSliderY = 0;
+    let initialPinchDist = null, initialZoom = 100;
+    let isMouseDown = false;
+
+    function getTargetFromPoint(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const isStack = document.getElementById('layoutSelect').value === 'frame_stack_solid.jpeg';
+        const relX = clientX - rect.left;
+        const relY = clientY - rect.top;
+        if (isStack) {
+            return (relY < rect.height / 2) ? 'before' : 'after';
+        } else {
+            return (relX < rect.width / 2) ? 'before' : 'after';
+        }
+    }
+
+    // Touch Handling (Mobile)
+    canvas.addEventListener('touchstart', (e) => {
+        if (!loadedBefore || !loadedAfter) return;
+        const rect = canvas.getBoundingClientRect();
+        const isStack = document.getElementById('layoutSelect').value === 'frame_stack_solid.jpeg';
+
+        if (e.touches.length === 1) {
+            activeTarget = getTargetFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            initialSliderX = parseFloat(document.getElementById(activeTarget === 'before' ? 'bX' : 'aX').value);
+            initialSliderY = parseFloat(document.getElementById(activeTarget === 'before' ? 'bY' : 'aY').value);
+            initialPinchDist = null;
+        } else if (e.touches.length === 2) {
+            const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            activeTarget = getTargetFromPoint(midX, midY);
+            initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            initialZoom = parseFloat(document.getElementById(activeTarget === 'before' ? 'bZoom' : 'aZoom').value);
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (!activeTarget) return;
+        e.preventDefault(); // Prevents mobile viewport scrolling while dragging
+        const rect = canvas.getBoundingClientRect();
+        const isStack = document.getElementById('layoutSelect').value === 'frame_stack_solid.jpeg';
+
+        if (e.touches.length === 1 && !initialPinchDist) {
+            const dx = e.touches[0].clientX - startX;
+            const dy = e.touches[0].clientY - startY;
+
+            let factorX = 200;
+            let factorY = isStack ? (100 / 0.35) : 200;
+
+            let deltaSliderX = (dx / rect.width) * factorX;
+            let deltaSliderY = (dy / rect.height) * factorY;
+
+            const xInput = document.getElementById(activeTarget === 'before' ? 'bX' : 'aX');
+            const yInput = document.getElementById(activeTarget === 'before' ? 'bY' : 'aY');
+
+            xInput.value = Math.max(-200, Math.min(200, Math.round(initialSliderX + deltaSliderX)));
+            yInput.value = Math.max(-200, Math.min(200, Math.round(initialSliderY + deltaSliderY)));
+            runGenerate(false);
+        } else if (e.touches.length === 2 && initialPinchDist) {
+            const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            const ratio = currentDist / initialPinchDist;
+            const zoomInput = document.getElementById(activeTarget === 'before' ? 'bZoom' : 'aZoom');
+            zoomInput.value = Math.max(10, Math.min(300, Math.round(initialZoom * ratio)));
+            runGenerate(false);
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+        if (e.touches.length === 0) {
+            activeTarget = null;
+            initialPinchDist = null;
+        } else if (e.touches.length === 1) {
+            activeTarget = getTargetFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            initialSliderX = parseFloat(document.getElementById(activeTarget === 'before' ? 'bX' : 'aX').value);
+            initialSliderY = parseFloat(document.getElementById(activeTarget === 'before' ? 'bY' : 'aY').value);
+            initialPinchDist = null;
+        }
+    });
+
+    // Mouse Handling (Desktop)
+    canvas.addEventListener('mousedown', (e) => {
+        if (!loadedBefore || !loadedAfter) return;
+        isMouseDown = true;
+        activeTarget = getTargetFromPoint(e.clientX, e.clientY);
+        startX = e.clientX;
+        startY = e.clientY;
+        initialSliderX = parseFloat(document.getElementById(activeTarget === 'before' ? 'bX' : 'aX').value);
+        initialSliderY = parseFloat(document.getElementById(activeTarget === 'before' ? 'bY' : 'aY').value);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isMouseDown || !activeTarget) return;
+        const rect = canvas.getBoundingClientRect();
+        const isStack = document.getElementById('layoutSelect').value === 'frame_stack_solid.jpeg';
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        let factorX = 200;
+        let factorY = isStack ? (100 / 0.35) : 200;
+
+        let deltaSliderX = (dx / rect.width) * factorX;
+        let deltaSliderY = (dy / rect.height) * factorY;
+
+        document.getElementById(activeTarget === 'before' ? 'bX' : 'aX').value = Math.max(-200, Math.min(200, Math.round(initialSliderX + deltaSliderX)));
+        document.getElementById(activeTarget === 'before' ? 'bY' : 'aY').value = Math.max(-200, Math.min(200, Math.round(initialSliderY + deltaSliderY)));
+        runGenerate(false);
+    });
+
+    window.addEventListener('mouseup', () => {
+        isMouseDown = false;
+        activeTarget = null;
+    });
+
+    // Mouse Scroll Wheel Zoom (Desktop)
+    canvas.addEventListener('wheel', (e) => {
+        if (!loadedBefore || !loadedAfter) return;
+        e.preventDefault();
+        const target = getTargetFromPoint(e.clientX, e.clientY);
+        const zoomInput = document.getElementById(target === 'before' ? 'bZoom' : 'aZoom');
+        let currentZoom = parseFloat(zoomInput.value);
+        let step = e.deltaY < 0 ? 5 : -5;
+        zoomInput.value = Math.max(10, Math.min(300, currentZoom + step));
+        runGenerate(false);
+    }, { passive: false });
 </script>
 </body>
 </html>
