@@ -90,4 +90,468 @@
             text-transform: uppercase; 
         }
         .btn-center { 
-            background: #444;
+            background: #444; 
+            color: #ddd; 
+            padding: 6px 12px; 
+            font-size: 12px; 
+            font-weight: 600; 
+            border-radius: 4px; 
+            border: 1px solid #555; 
+            cursor: pointer; 
+            display: inline-block;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-center:hover { 
+            background: #555; 
+            color: #fff; 
+        }
+        select, button.main-btn { 
+            padding: 12px; 
+            font-size: 16px; 
+            border-radius: 6px; 
+            border: none; 
+            background: #333; 
+            color: #fff; 
+            cursor: pointer; 
+        }
+        button.main-btn { 
+            background: #8B6508; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            margin-top: 10px; 
+            transition: background 0.2s; 
+            width: 100%; 
+        }
+        button.main-btn:hover { 
+            background: #a67c00; 
+        }
+        
+        .gesture-hint {
+            display: none;
+            font-size: 12px;
+            color: #d4af37;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        canvas { 
+            max-width: 100%; 
+            height: auto; 
+            border: 2px solid #8B6508; 
+            margin-top: 10px; 
+            display: none;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Iron Foot Showcase Builder</h1>
+    
+    <div class="controls">
+        <div class="file-upload">
+            <label>1. Select Master Template</label>
+            <select id="layoutSelect" onchange="runGenerate(false)">
+                <option value="frame_vv_solid.jpeg" selected>Vertical / Vertical (1:1 Square)</option>
+                <option value="frame_stack_solid.jpeg">Horizontal / Horizontal (4:5 Over/Under)</option>
+            </select>
+        </div>
+
+        <div class="file-upload">
+            <label>2. Upload BEFORE Photo <span id="bStatus" class="status-tag">Missing</span></label>
+            <input type="file" id="beforeImage" accept="image/*">
+            <div class="slider-group">
+                <div><span class="slider-label">Zoom</span><input type="range" id="bZoom" min="10" max="300" value="100" oninput="runGenerate(false)"></div>
+                <div><span class="slider-label">Left / Right</span><input type="range" id="bX" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
+                <div><span class="slider-label">Up / Down</span><input type="range" id="bY" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
+            </div>
+            <button type="button" class="btn-center" onclick="resetBeforePosition()">Center Photo</button>
+        </div>
+        
+        <div class="file-upload">
+            <label>3. Upload AFTER Photo <span id="aStatus" class="status-tag">Missing</span></label>
+            <input type="file" id="afterImage" accept="image/*">
+            <div class="slider-group">
+                <div><span class="slider-label">Zoom</span><input type="range" id="aZoom" min="10" max="300" value="100" oninput="runGenerate(false)"></div>
+                <div><span class="slider-label">Left / Right</span><input type="range" id="aX" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
+                <div><span class="slider-label">Up / Down</span><input type="range" id="aY" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
+            </div>
+            <button type="button" class="btn-center" onclick="resetAfterPosition()">Center Photo</button>
+        </div>
+
+        <button class="main-btn" onclick="runGenerate(true)">Generate Showcase</button>
+        <button id="downloadBtn" class="main-btn" style="display:none; background:#2e7d32;" onclick="downloadImage()">Download to Device</button>
+    </div>
+
+    <div id="gestureHint" class="gesture-hint">👆 Tap & drag photos to reposition • Pinch with 2 fingers to zoom</div>
+    <canvas id="canvas"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let loadedBefore = null;
+    let loadedAfter = null;
+
+    document.getElementById('beforeImage').addEventListener('change', async (e) => {
+        if (e.target.files && e.target.files[0]) {
+            try {
+                loadedBefore = await loadImage(e.target.files[0]);
+                const status = document.getElementById('bStatus');
+                status.textContent = 'Loaded ✓';
+                status.className = 'status-tag ready';
+                runGenerate(false);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    });
+    
+    document.getElementById('afterImage').addEventListener('change', async (e) => {
+        if (e.target.files && e.target.files[0]) {
+            try {
+                loadedAfter = await loadImage(e.target.files[0]);
+                const status = document.getElementById('aStatus');
+                status.textContent = 'Loaded ✓';
+                status.className = 'status-tag ready';
+                runGenerate(false);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    });
+
+    function resetBeforePosition() {
+        document.getElementById('bX').value = 0;
+        document.getElementById('bY').value = 0;
+        runGenerate(false);
+    }
+
+    function resetAfterPosition() {
+        document.getElementById('aX').value = 0;
+        document.getElementById('aY').value = 0;
+        runGenerate(false);
+    }
+
+    function loadImage(source) {
+        return new Promise((resolve, reject) => {
+            if (!source) { resolve(null); return; }
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => {
+                const name = typeof source === 'string' ? source : 'Uploaded File';
+                alert(`Error loading image: ${name}. Ensure it exists in the repo.`);
+                reject(new Error(`Failed to load ${name}`));
+            };
+            if (typeof source === 'string') {
+                img.src = source;
+            } else {
+                img.src = URL.createObjectURL(source);
+            }
+        });
+    }
+
+    async function runGenerate(isManualClick) {
+        if (!loadedBefore || !loadedAfter) {
+            if (isManualClick) {
+                alert(`Please upload both photos first.\n- BEFORE: ${loadedBefore ? 'Ready' : 'MISSING'}\n- AFTER: ${loadedAfter ? 'Ready' : 'MISSING'}`);
+            }
+            return;
+        }
+
+        try {
+            const frameFilename = document.getElementById('layoutSelect').value;
+            const frameImg = await loadImage(frameFilename);
+
+            const W = frameImg.width;
+            const H = frameImg.height;
+            canvas.width = W;
+            canvas.height = H;
+
+            // LAYER 1: BASE BACKGROUND
+            ctx.drawImage(frameImg, 0, 0, W, H);
+
+            // LAYER 2: DRAW PHOTOS
+            if (frameFilename === 'frame_stack_solid.jpeg') {
+                const winW = W * 0.90;
+                const winBeforeH = H * 0.335;
+                const winAfterH = H * 0.375;
+
+                // BEFORE (Top Window) - Full Cover scaling
+                let bZoom = document.getElementById('bZoom').value / 100;
+                let baseBeforeScale = Math.max(winW / loadedBefore.width, winBeforeH / loadedBefore.height);
+                let bW = loadedBefore.width * baseBeforeScale * bZoom;
+                let bH = loadedBefore.height * baseBeforeScale * bZoom;
+
+                let bX = (W / 2) + (document.getElementById('bX').value / 100) * (W / 2);
+                let bY = (H * 0.3125) + (document.getElementById('bY').value / 100) * (H * 0.35);
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, 0, W, H * 0.50);
+                ctx.clip();
+                ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
+                ctx.restore();
+
+                // AFTER (Bottom Window) - Full Cover scaling
+                let aZoom = document.getElementById('aZoom').value / 100;
+                let baseAfterScale = Math.max(winW / loadedAfter.width, winAfterH / loadedAfter.height);
+                let aW = loadedAfter.width * baseAfterScale * aZoom;
+                let aH = loadedAfter.height * baseAfterScale * aZoom;
+
+                let aX = (W / 2) + (document.getElementById('aX').value / 100) * (W / 2);
+                let aY = (H * 0.711) + (document.getElementById('aY').value / 100) * (H * 0.35);
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, H * 0.48, W, H * 0.52);
+                ctx.clip();
+                ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
+                ctx.restore();
+
+            } else {
+                // SIDE-BY-SIDE SQUARE (frame_vv_solid)
+                let bZoom = document.getElementById('bZoom').value / 100;
+                let bX = (W / 4) + (document.getElementById('bX').value / 100) * (W / 2);
+                let bY = (H / 2) + (document.getElementById('bY').value / 100) * (H / 2);
+                let bW = loadedBefore.width * bZoom;
+                let bH = loadedBefore.height * bZoom;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, 0, W / 2, H);
+                ctx.clip();
+                ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
+                ctx.restore();
+
+                let aZoom = document.getElementById('aZoom').value / 100;
+                let aX = (W * 0.75) + (document.getElementById('aX').value / 100) * (W / 2);
+                let aY = (H / 2) + (document.getElementById('aY').value / 100) * (H / 2);
+                let aW = loadedAfter.width * aZoom;
+                let aH = loadedAfter.height * aZoom;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(W / 2, 0, W / 2, H);
+                ctx.clip();
+                ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
+                ctx.restore();
+            }
+
+            // LAYER 3: EXACT-CUT SANDWICH OVERLAY STAMPS
+            if (frameFilename === 'frame_stack_solid.jpeg') {
+                const topH = H * 0.146;
+                const botY = H * 0.897;
+                const botH = H * 0.103;
+                const divY = H * 0.478;
+                const divH = H * 0.050;
+                
+                const badgeX = W * 0.736;
+                const badgeY = 0;
+                const badgeW = W * 0.198;
+                const badgeH = H * 0.190;
+                
+                const afterBoxX = W * 0.575;
+                const afterBoxY = H * 0.467;
+                const afterBoxW = W * 0.380;
+                const afterBoxH = H * 0.099;
+
+                const edgeW = W * 0.052;
+
+                ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
+                ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
+                ctx.drawImage(frameImg, 0, divY, W, divH, 0, divY, W, divH);
+                ctx.drawImage(frameImg, afterBoxX, afterBoxY, afterBoxW, afterBoxH, afterBoxX, afterBoxY, afterBoxW, afterBoxH);
+                ctx.drawImage(frameImg, badgeX, badgeY, badgeW, badgeH, badgeX, badgeY, badgeW, badgeH);
+                ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
+                ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
+
+            } else {
+                // 1:1 Square (frame_vv_solid)
+                const topH = H * 0.168;
+                const botY = H * 0.872;
+                const botH = H * 0.128;
+                const divX = W * 0.470;
+                const divW = W * 0.060;
+                const badgeX = W * 0.400;
+                const badgeY = 0;
+                const badgeW = W * 0.200;
+                const badgeH = H * 0.215;
+                const edgeW = W * 0.045;
+
+                ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
+                ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
+                ctx.drawImage(frameImg, divX, 0, divW, H, divX, 0, divW, H);
+                ctx.drawImage(frameImg, badgeX, badgeY, badgeW, badgeH, badgeX, badgeY, badgeW, badgeH);
+                ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
+                ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
+            }
+
+            canvas.style.display = 'block';
+            document.getElementById('downloadBtn').style.display = 'block';
+            document.getElementById('gestureHint').style.display = 'block';
+            
+        } catch (error) {
+            alert("Error rendering showcase: " + error.message);
+        }
+    }
+
+    function downloadImage() {
+        const link = document.createElement('a');
+        link.download = 'IronFoot_Showcase_Final.jpeg';
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.click();
+    }
+
+    // ==========================================
+    // TOUCH, DRAG & PINCH-TO-ZOOM INTERACTION
+    // ==========================================
+    let activeTarget = null;
+    let startX = 0, startY = 0;
+    let initialSliderX = 0, initialSliderY = 0;
+    let initialPinchDist = null, initialZoom = 100;
+    let isMouseDown = false;
+
+    function getTargetFromPoint(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const isStack = document.getElementById('layoutSelect').value === 'frame_stack_solid.jpeg';
+        const relX = clientX - rect.left;
+        const relY = clientY - rect.top;
+        if (isStack) {
+            return (relY < rect.height / 2) ? 'before' : 'after';
+        } else {
+            return (relX < rect.width / 2) ? 'before' : 'after';
+        }
+    }
+
+    // Touch Handling (Mobile)
+    canvas.addEventListener('touchstart', (e) => {
+        if (!loadedBefore || !loadedAfter) return;
+        const rect = canvas.getBoundingClientRect();
+        const isStack = document.getElementById('layoutSelect').value === 'frame_stack_solid.jpeg';
+
+        if (e.touches.length === 1) {
+            activeTarget = getTargetFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            initialSliderX = parseFloat(document.getElementById(activeTarget === 'before' ? 'bX' : 'aX').value);
+            initialSliderY = parseFloat(document.getElementById(activeTarget === 'before' ? 'bY' : 'aY').value);
+            initialPinchDist = null;
+        } else if (e.touches.length === 2) {
+            const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            activeTarget = getTargetFromPoint(midX, midY);
+            initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            initialZoom = parseFloat(document.getElementById(activeTarget === 'before' ? 'bZoom' : 'aZoom').value);
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (!activeTarget) return;
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const isStack = document.getElementById('layoutSelect').value === 'frame_stack_solid.jpeg';
+
+        if (e.touches.length === 1 && !initialPinchDist) {
+            const dx = e.touches[0].clientX - startX;
+            const dy = e.touches[0].clientY - startY;
+
+            let factorX = 200;
+            let factorY = isStack ? (100 / 0.35) : 200;
+
+            let deltaSliderX = (dx / rect.width) * factorX;
+            let deltaSliderY = (dy / rect.height) * factorY;
+
+            const xInput = document.getElementById(activeTarget === 'before' ? 'bX' : 'aX');
+            const yInput = document.getElementById(activeTarget === 'before' ? 'bY' : 'aY');
+
+            xInput.value = Math.max(-200, Math.min(200, Math.round(initialSliderX + deltaSliderX)));
+            yInput.value = Math.max(-200, Math.min(200, Math.round(initialSliderY + deltaSliderY)));
+            runGenerate(false);
+        } else if (e.touches.length === 2 && initialPinchDist) {
+            const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            const ratio = currentDist / initialPinchDist;
+            const zoomInput = document.getElementById(activeTarget === 'before' ? 'bZoom' : 'aZoom');
+            zoomInput.value = Math.max(10, Math.min(300, Math.round(initialZoom * ratio)));
+            runGenerate(false);
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+        if (e.touches.length === 0) {
+            activeTarget = null;
+            initialPinchDist = null;
+        } else if (e.touches.length === 1) {
+            activeTarget = getTargetFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            initialSliderX = parseFloat(document.getElementById(activeTarget === 'before' ? 'bX' : 'aX').value);
+            initialSliderY = parseFloat(document.getElementById(activeTarget === 'before' ? 'bY' : 'aY').value);
+            initialPinchDist = null;
+        }
+    });
+
+    // Mouse Handling (Desktop)
+    canvas.addEventListener('mousedown', (e) => {
+        if (!loadedBefore || !loadedAfter) return;
+        isMouseDown = true;
+        activeTarget = getTargetFromPoint(e.clientX, e.clientY);
+        startX = e.clientX;
+        startY = e.clientY;
+        initialSliderX = parseFloat(document.getElementById(activeTarget === 'before' ? 'bX' : 'aX').value);
+        initialSliderY = parseFloat(document.getElementById(activeTarget === 'before' ? 'bY' : 'aY').value);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isMouseDown || !activeTarget) return;
+        const rect = canvas.getBoundingClientRect();
+        const isStack = document.getElementById('layoutSelect').value === 'frame_stack_solid.jpeg';
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        let factorX = 200;
+        let factorY = isStack ? (100 / 0.35) : 200;
+
+        let deltaSliderX = (dx / rect.width) * factorX;
+        let deltaSliderY = (dy / rect.height) * factorY;
+
+        document.getElementById(activeTarget === 'before' ? 'bX' : 'aX').value = Math.max(-200, Math.min(200, Math.round(initialSliderX + deltaSliderX)));
+        document.getElementById(activeTarget === 'before' ? 'bY' : 'aY').value = Math.max(-200, Math.min(200, Math.round(initialSliderY + deltaSliderY)));
+        runGenerate(false);
+    });
+
+    window.addEventListener('mouseup', () => {
+        isMouseDown = false;
+        activeTarget = null;
+    });
+
+    // Mouse Scroll Wheel Zoom (Desktop)
+    canvas.addEventListener('wheel', (e) => {
+        if (!loadedBefore || !loadedAfter) return;
+        e.preventDefault();
+        const target = getTargetFromPoint(e.clientX, e.clientY);
+        const zoomInput = document.getElementById(target === 'before' ? 'bZoom' : 'aZoom');
+        let currentZoom = parseFloat(zoomInput.value);
+        let step = e.deltaY < 0 ? 5 : -5;
+        zoomInput.value = Math.max(10, Math.min(300, currentZoom + step));
+        runGenerate(false);
+    }, { passive: false });
+
+    // Register Service Worker for PWA / Install prompt
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch((err) => console.log('SW registration failed:', err));
+        });
+    }
+</script>
+</body>
+</html>
