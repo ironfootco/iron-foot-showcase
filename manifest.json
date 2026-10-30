@@ -1,0 +1,18 @@
+{
+  "name": "Iron Foot Showcase",
+  "short_name": "Showcase",
+  "description": "Iron Foot Co. Before & After Showcase Generator",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121212",
+  "theme_color": "#8B6508",
+  "icons": [
+    {
+      "src": "frame_vv_solid.jpeg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
