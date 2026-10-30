@@ -113,18 +113,20 @@
         for (let y = 0; y < H; y++) {
             for (let x = 0; x < W; x++) {
                 const i = (y * W + x) * 4;
-                // If pixel is white or light gray...
-                if (data[i] > 200 && data[i+1] > 200 && data[i+2] > 200) {
+                
+                // Target very bright white (the blank windows are pure white)
+                if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
                     
-                    // Protect the Logo Badge area at the top
-                    const inBadge = (x > W * 0.25 && x < W * 0.75 && y < H * 0.28);
+                    // Tightly bounded protection zones so we ONLY protect actual white text, not the background.
+                    // Logo text is strictly in the top center.
+                    const inLogoText = (x > W * 0.40 && x < W * 0.60 && y < H * 0.22);
                     
-                    // Protect the footer text area at the bottom
-                    const inFooter = (y > H * 0.82);
+                    // Footer text is strictly at the very bottom.
+                    const inFooterText = (y > H * 0.88);
 
-                    // If it's a white pixel NOT in the protected zones, punch a hole
-                    if (!inBadge && !inFooter) {
-                        data[i+3] = 0; // Set alpha to transparent
+                    // If it's a white pixel AND it's not part of the logo/footer text, punch it out.
+                    if (!inLogoText && !inFooterText) {
+                        data[i+3] = 0; 
                     }
                 }
             }
