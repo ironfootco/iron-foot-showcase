@@ -175,27 +175,27 @@
                 let bH = loadedBefore.height * baseBeforeScale * bZoom;
 
                 let bX = (W / 2) + (document.getElementById('bX').value / 100) * (W / 2);
-                let bY = (H * 0.31) + (document.getElementById('bY').value / 100) * (H * 0.35);
+                let bY = (H * 0.322) + (document.getElementById('bY').value / 100) * (H * 0.35);
 
                 ctx.save();
                 ctx.beginPath();
-                ctx.rect(0, 0, W, H * 0.48);
+                ctx.rect(0, 0, W, H * 0.485);
                 ctx.clip();
                 ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
                 ctx.restore();
 
                 // AFTER (Bottom Window)
                 let aZoom = document.getElementById('aZoom').value / 100;
-                let baseAfterScale = (W / loadedAfter.width);
+                let baseAfterScale = (W / loadedAfter.width) * 1.02;
                 let aW = loadedAfter.width * baseAfterScale * aZoom;
                 let aH = loadedAfter.height * baseAfterScale * aZoom;
 
                 let aX = (W / 2) + (document.getElementById('aX').value / 100) * (W / 2);
-                let aY = (H * 0.715) + (document.getElementById('aY').value / 100) * (H * 0.35);
+                let aY = (H * 0.690) + (document.getElementById('aY').value / 100) * (H * 0.35);
 
                 ctx.save();
                 ctx.beginPath();
-                ctx.rect(0, H * 0.50, W, H * 0.50);
+                ctx.rect(0, H * 0.490, W, H * 0.510);
                 ctx.clip();
                 ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
                 ctx.restore();
@@ -231,26 +231,26 @@
 
             // LAYER 3: EXACT-CUT SANDWICH OVERLAY STAMPS
             if (frameFilename === 'frame_stack_solid.jpeg') {
-                // 4:5 Stack Tuned Overlays
                 const topH = H * 0.150;
                 const botY = H * 0.895;
                 const botH = H * 0.105;
                 const divY = H * 0.478;
                 const divH = H * 0.052;
                 
-                // Top Right Badge
-                const badgeX = W * 0.730;
+                // Top Right Badge (tightened to bronze trim)
+                const badgeX = W * 0.736;
                 const badgeY = 0;
-                const badgeW = W * 0.205;
-                const badgeH = H * 0.198;
+                const badgeW = W * 0.198;
+                const badgeH = H * 0.192;
                 
-                // After Box Cutout Stamp
-                const afterBoxX = W * 0.570;
-                const afterBoxY = H * 0.465;
-                const afterBoxW = W * 0.400;
-                const afterBoxH = H * 0.105;
+                // After Box Cutout Stamp (flush to bronze border)
+                const afterBoxX = W * 0.575;
+                const afterBoxY = H * 0.467;
+                const afterBoxW = W * 0.380;
+                const afterBoxH = H * 0.099;
 
-                const edgeW = W * 0.046;
+                // Outer border width (covers inner bronze pinstripes)
+                const edgeW = W * 0.052;
 
                 // 1. Top Header
                 ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
@@ -258,7 +258,7 @@
                 ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
                 // 3. Center Horizontal Divider Bar
                 ctx.drawImage(frameImg, 0, divY, W, divH, 0, divY, W, divH);
-                // 4. Stamped AFTER Box (Protects text & border)
+                // 4. Stamped AFTER Box
                 ctx.drawImage(frameImg, afterBoxX, afterBoxY, afterBoxW, afterBoxH, afterBoxX, afterBoxY, afterBoxW, afterBoxH);
                 // 5. Top Right Logo Badge
                 ctx.drawImage(frameImg, badgeX, badgeY, badgeW, badgeH, badgeX, badgeY, badgeW, badgeH);
@@ -281,7 +281,7 @@
                 ctx.drawImage(frameImg, 0, 0, W, topH, 0, 0, W, topH);
                 ctx.drawImage(frameImg, 0, botY, W, botH, 0, botY, W, botH);
                 ctx.drawImage(frameImg, divX, 0, divW, H, divX, 0, divW, H);
-                ctx.drawImage(frameImg, badgeX, 0, badgeW, badgeH, badgeX, 0, badgeW, badgeH);
+                ctx.drawImage(frameImg, badgeX, 0, badgeW, badgeH, badgeX, badgeY, badgeW, badgeH);
                 ctx.drawImage(frameImg, 0, 0, edgeW, H, 0, 0, edgeW, H);
                 ctx.drawImage(frameImg, W - edgeW, 0, edgeW, H, W - edgeW, 0, edgeW, H);
             }
