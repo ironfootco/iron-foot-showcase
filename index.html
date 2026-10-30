@@ -73,7 +73,6 @@
         });
     }
 
-    // Scales image to completely cover the target box without stretching
     function drawImageCover(img, x, y, w, h) {
         const scale = Math.max(w / img.width, h / img.height);
         const nw = img.width * scale;
@@ -97,27 +96,27 @@
         const imgAfter = await loadImage(afterFile);
         const frameImg = await loadImage(frameFilename);
 
-        canvas.width = frameImg.width;
-        canvas.height = frameImg.height;
+        const W = frameImg.width;
+        const H = frameImg.height;
+        canvas.width = W;
+        canvas.height = H;
 
-        // 1. Draw the Master Frame FIRST (on the bottom)
-        ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
+        // 1. Draw the Master Frame FIRST
+        ctx.drawImage(frameImg, 0, 0, W, H);
 
-        // 2. Define the cutout boxes for the photos to paste INTO
-        // Nudge these numbers if the photos overlap the bronze borders on your specific JPGs
+        // 2. Define boxes using PERCENTAGES of the canvas size
         let leftBox, rightBox;
 
         if (frameFilename === 'frame_hh.jpg') {
-            // Approximated for 1920x1080 16:9 layout
-            leftBox = { x: 38, y: 195, w: 900, h: 740 };
-            rightBox = { x: 982, y: 195, w: 900, h: 740 };
+            leftBox =  { x: W * 0.025, y: H * 0.185, w: W * 0.465, h: H * 0.67 };
+            rightBox = { x: W * 0.510, y: H * 0.185, w: W * 0.465, h: H * 0.67 };
         } else {
-            // Approximated for 1440x1440 1:1 layout
-            leftBox = { x: 42, y: 200, w: 660, h: 1080 };
-            rightBox = { x: 738, y: 200, w: 660, h: 1080 };
+            // frame_vv.jpg
+            leftBox =  { x: W * 0.035, y: H * 0.190, w: W * 0.445, h: H * 0.67 };
+            rightBox = { x: W * 0.520, y: H * 0.190, w: W * 0.445, h: H * 0.67 };
         }
 
-        // 3. Draw BEFORE Photo with Clipping Mask (so it doesn't bleed over borders)
+        // 3. Draw BEFORE Photo with Clipping Mask
         ctx.save();
         ctx.beginPath();
         ctx.rect(leftBox.x, leftBox.y, leftBox.w, leftBox.h);
