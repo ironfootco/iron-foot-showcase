@@ -32,7 +32,7 @@
             <label>1. Select Master Template (Solid Backgrounds)</label>
             <select id="layoutSelect" onchange="generateShowcase()">
                 <option value="frame_hh.jpeg">Horizontal / Horizontal (16:9)</option>
-                <option value="frame_vv_solid.jpeg">Vertical / Vertical (1:1 Square)</option>
+                <option value="frame_vv.jpeg">Vertical / Vertical (1:1 Square)</option>
             </select>
         </div>
 
@@ -85,84 +85,4 @@
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = () => {
-                alert("Could not load frame image. Make sure your solid background JPEG files are uploaded to GitHub.");
-                reject();
-            };
-            if (typeof source === 'string') {
-                img.src = source; 
-            } else {
-                const reader = new FileReader();
-                reader.onload = (e) => img.src = e.target.result;
-                reader.readAsDataURL(source);
-            }
-        });
-    }
-
-    async function generateShowcase() {
-        if (!loadedBefore || !loadedAfter) return;
-
-        const frameFilename = document.getElementById('layoutSelect').value;
-        const frameImg = await loadImage(frameFilename);
-
-        const W = frameImg.width;
-        const H = frameImg.height;
-        canvas.width = W;
-        canvas.height = H;
-
-        // LAYER 1: BASE BACKGROUND (The solid frame)
-        ctx.drawImage(frameImg, 0, 0, W, H);
-
-        // LAYER 2: DRAW PHOTOS
-        // Before Photo (Clipped to left half)
-        let bZoom = document.getElementById('bZoom').value / 100;
-        let bX = (W / 4) + (document.getElementById('bX').value / 100) * (W / 2);
-        let bY = (H / 2) + (document.getElementById('bY').value / 100) * (H / 2);
-        let bW = loadedBefore.width * bZoom;
-        let bH = loadedBefore.height * bZoom;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, 0, W / 2, H);
-        ctx.clip();
-        ctx.drawImage(loadedBefore, bX - bW / 2, bY - bH / 2, bW, bH);
-        ctx.restore();
-
-        // After Photo (Clipped to right half)
-        let aZoom = document.getElementById('aZoom').value / 100;
-        let aX = (W * 0.75) + (document.getElementById('aX').value / 100) * (W / 2);
-        let aY = (H / 2) + (document.getElementById('aY').value / 100) * (H / 2);
-        let aW = loadedAfter.width * aZoom;
-        let aH = loadedAfter.height * aZoom;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(W / 2, 0, W / 2, H);
-        ctx.clip();
-        ctx.drawImage(loadedAfter, aX - aW / 2, aY - aH / 2, aW, aH);
-        ctx.restore();
-
-        // LAYER 3: SANDWICH OVERLAY STAMPS
-        // Top Header
-        ctx.drawImage(frameImg, 0, 0, W, H * 0.19, 0, 0, W, H * 0.19);
-        // Bottom Footer
-        ctx.drawImage(frameImg, 0, H * 0.81, W, H * 0.19, 0, H * 0.81, W, H * 0.19);
-        // Center Divider & Logo Badge
-        ctx.drawImage(frameImg, W * 0.35, 0, W * 0.30, H, W * 0.35, 0, W * 0.30, H);
-        // Left Outer Border
-        ctx.drawImage(frameImg, 0, 0, W * 0.04, H, 0, 0, W * 0.04, H);
-        // Right Outer Border
-        ctx.drawImage(frameImg, W * 0.96, 0, W * 0.04, H, W * 0.96, 0, W * 0.04, H);
-
-        canvas.style.display = 'block';
-        document.getElementById('downloadBtn').style.display = 'block';
-    }
-
-    function downloadImage() {
-        const link = document.createElement('a');
-        link.download = 'IronFoot_Showcase_Final.jpeg';
-        link.href = canvas.toDataURL('image/jpeg', 0.9);
-        link.click();
-    }
-</script>
-</body>
-</html>
+                alert("Could not load frame image. Make sure your solid background
