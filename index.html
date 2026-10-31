@@ -70,25 +70,6 @@
             margin-bottom: 10px; 
             font-size: 14px; 
         }
-        .slider-group { 
-            display: flex; 
-            gap: 15px; 
-            align-items: center; 
-            margin-bottom: 10px; 
-        }
-        .slider-group div { 
-            flex: 1; 
-            text-align: center; 
-        }
-        .slider-group input[type="range"] { 
-            width: 100%; 
-            margin-top: 5px; 
-        }
-        .slider-label { 
-            font-size: 11px; 
-            color: #888; 
-            text-transform: uppercase; 
-        }
         .btn-center { 
             background: #444; 
             color: #ddd; 
@@ -169,22 +150,20 @@
         <div class="file-upload">
             <label>2. Upload BEFORE Photo <span id="bStatus" class="status-tag">Missing</span></label>
             <input type="file" id="beforeImage" accept="image/*">
-            <div class="slider-group">
-                <div><span class="slider-label">Zoom</span><input type="range" id="bZoom" min="10" max="300" value="100" oninput="runGenerate(false)"></div>
-                <div><span class="slider-label">Left / Right</span><input type="range" id="bX" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
-                <div><span class="slider-label">Up / Down</span><input type="range" id="bY" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
-            </div>
+            <!-- Hidden State Variables for Math -->
+            <input type="hidden" id="bZoom" value="100">
+            <input type="hidden" id="bX" value="0">
+            <input type="hidden" id="bY" value="0">
             <button type="button" class="btn-center" onclick="resetBeforePosition()">Center Photo</button>
         </div>
         
         <div class="file-upload">
             <label>3. Upload AFTER Photo <span id="aStatus" class="status-tag">Missing</span></label>
             <input type="file" id="afterImage" accept="image/*">
-            <div class="slider-group">
-                <div><span class="slider-label">Zoom</span><input type="range" id="aZoom" min="10" max="300" value="100" oninput="runGenerate(false)"></div>
-                <div><span class="slider-label">Left / Right</span><input type="range" id="aX" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
-                <div><span class="slider-label">Up / Down</span><input type="range" id="aY" min="-200" max="200" value="0" oninput="runGenerate(false)"></div>
-            </div>
+            <!-- Hidden State Variables for Math -->
+            <input type="hidden" id="aZoom" value="100">
+            <input type="hidden" id="aX" value="0">
+            <input type="hidden" id="aY" value="0">
             <button type="button" class="btn-center" onclick="resetAfterPosition()">Center Photo</button>
         </div>
 
