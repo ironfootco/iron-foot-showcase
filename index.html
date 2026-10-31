@@ -32,81 +32,114 @@
         h1 { 
             color: #d4af37; 
             margin-top: 0; 
-            font-size: 24px; 
+            font-size: 22px; 
+            letter-spacing: 0.5px;
         }
         .controls { 
             display: flex; 
             flex-direction: column; 
-            gap: 15px; 
-            margin-bottom: 20px; 
+            gap: 12px; 
+            margin-bottom: 15px; 
             text-align: left; 
         }
-        .file-upload { 
+        .card { 
             background: #2a2a2a; 
-            padding: 15px; 
+            padding: 14px 16px; 
             border-radius: 6px; 
             border: 1px solid #333; 
         }
-        label { 
-            font-weight: bold; 
-            display: block; 
-            margin-bottom: 8px; 
-            color: #aaa; 
-            font-size: 14px; 
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
         }
-        .status-tag { 
-            font-size: 12px; 
-            font-weight: normal; 
-            margin-left: 10px; 
-            color: #ff5252; 
-        }
-        .status-tag.ready { 
-            color: #4caf50; 
-        }
-        input[type="file"], select { 
-            display: block; 
-            width: 100%; 
-            color: #fff; 
-            margin-bottom: 10px; 
-            font-size: 14px; 
-        }
-        .btn-center { 
-            background: #444; 
-            color: #ddd; 
-            padding: 6px 12px; 
-            font-size: 12px; 
-            font-weight: 600; 
-            border-radius: 4px; 
-            border: 1px solid #555; 
-            cursor: pointer; 
-            display: inline-block;
-            margin-top: 4px;
+        .card-title { 
+            font-weight: 700; 
+            color: #bbb; 
+            font-size: 13px; 
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .btn-center:hover { 
-            background: #555; 
+        
+        select { 
+            display: block; 
+            width: 100%; 
             color: #fff; 
+            background: #1e1e1e;
+            border: 1px solid #444;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px; 
         }
-        select, button.main-btn { 
-            padding: 12px; 
+
+        /* Prominent Mobile Upload Button */
+        .btn-upload {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            background: #333;
+            border: 1px dashed #666;
+            color: #eee;
+            padding: 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .btn-upload:active {
+            background: #444;
+            border-color: #d4af37;
+        }
+        .btn-upload.ready {
+            background: #1c2b1e;
+            border: 1px solid #2e7d32;
+            color: #81c784;
+        }
+
+        /* Subtle Corner Reset Button */
+        .btn-reset { 
+            background: transparent; 
+            color: #777; 
+            padding: 3px 8px; 
+            font-size: 11px; 
+            font-weight: 600; 
+            border-radius: 4px; 
+            border: 1px solid #444; 
+            cursor: pointer; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+        .btn-reset:hover, .btn-reset:active { 
+            background: #3a3a3a; 
+            color: #ccc; 
+            border-color: #666;
+        }
+
+        /* Final Action Button */
+        .download-btn { 
+            padding: 14px; 
             font-size: 16px; 
             border-radius: 6px; 
             border: none; 
-            background: #333; 
+            background: #2e7d32; 
             color: #fff; 
-            cursor: pointer; 
-        }
-        button.main-btn { 
-            background: #8B6508; 
             font-weight: bold; 
             text-transform: uppercase; 
-            margin-top: 10px; 
-            transition: background 0.2s; 
-            width: 100%; 
+            cursor: pointer; 
+            width: 100%;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: none;
         }
-        button.main-btn:hover { 
-            background: #a67c00; 
+        .download-btn:active { 
+            background: #1b5e20; 
         }
         
         .gesture-hint {
@@ -139,39 +172,54 @@
     <h1>Iron Foot Showcase Builder</h1>
     
     <div class="controls">
-        <div class="file-upload">
-            <label>1. Select Master Template</label>
-            <select id="layoutSelect" onchange="runGenerate(false)">
+        <!-- 1. Layout Mode -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">1. Layout Style</span>
+            </div>
+            <select id="layoutSelect" onchange="runGenerate()">
                 <option value="frame_vv_solid.jpeg" selected>Vertical / Vertical (1:1 Square)</option>
                 <option value="frame_stack_solid.jpeg">Horizontal / Horizontal (4:5 Over/Under)</option>
             </select>
         </div>
 
-        <div class="file-upload">
-            <label>2. Upload BEFORE Photo <span id="bStatus" class="status-tag">Missing</span></label>
-            <input type="file" id="beforeImage" accept="image/*">
-            <!-- Hidden State Variables for Math -->
+        <!-- 2. BEFORE Photo Upload -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">2. BEFORE Photo</span>
+                <button type="button" class="btn-reset" onclick="resetBeforePosition()">↺ Reset Center</button>
+            </div>
+            <label for="beforeImage" class="btn-upload" id="bUploadBtn">
+                <span>📷</span>
+                <span id="bText">Tap to Select BEFORE Photo</span>
+            </label>
+            <input type="file" id="beforeImage" accept="image/*" style="display:none">
             <input type="hidden" id="bZoom" value="100">
             <input type="hidden" id="bX" value="0">
             <input type="hidden" id="bY" value="0">
-            <button type="button" class="btn-center" onclick="resetBeforePosition()">Center Photo</button>
         </div>
         
-        <div class="file-upload">
-            <label>3. Upload AFTER Photo <span id="aStatus" class="status-tag">Missing</span></label>
-            <input type="file" id="afterImage" accept="image/*">
-            <!-- Hidden State Variables for Math -->
+        <!-- 3. AFTER Photo Upload -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">3. AFTER Photo</span>
+                <button type="button" class="btn-reset" onclick="resetAfterPosition()">↺ Reset Center</button>
+            </div>
+            <label for="afterImage" class="btn-upload" id="aUploadBtn">
+                <span>📷</span>
+                <span id="aText">Tap to Select AFTER Photo</span>
+            </label>
+            <input type="file" id="afterImage" accept="image/*" style="display:none">
             <input type="hidden" id="aZoom" value="100">
             <input type="hidden" id="aX" value="0">
             <input type="hidden" id="aY" value="0">
-            <button type="button" class="btn-center" onclick="resetAfterPosition()">Center Photo</button>
         </div>
 
-        <button class="main-btn" onclick="runGenerate(true)">Generate Showcase</button>
-        <button id="downloadBtn" class="main-btn" style="display:none; background:#2e7d32;" onclick="downloadImage()">Download to Device</button>
+        <!-- Primary Action: Save to Camera Roll -->
+        <button id="downloadBtn" class="download-btn" onclick="downloadImage()">Download to Device</button>
     </div>
 
-    <div id="gestureHint" class="gesture-hint">👆 Tap & drag photos to reposition • Pinch with 2 fingers to zoom</div>
+    <div id="gestureHint" class="gesture-hint">👆 Drag photos to reposition • Pinch to zoom</div>
     <canvas id="canvas"></canvas>
 </div>
 
@@ -183,12 +231,14 @@
 
     document.getElementById('beforeImage').addEventListener('change', async (e) => {
         if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
             try {
-                loadedBefore = await loadImage(e.target.files[0]);
-                const status = document.getElementById('bStatus');
-                status.textContent = 'Loaded ✓';
-                status.className = 'status-tag ready';
-                runGenerate(false);
+                loadedBefore = await loadImage(file);
+                const btn = document.getElementById('bUploadBtn');
+                const txt = document.getElementById('bText');
+                txt.textContent = '✓ ' + file.name;
+                btn.classList.add('ready');
+                runGenerate();
             } catch (err) {
                 console.error(err);
             }
@@ -197,12 +247,14 @@
     
     document.getElementById('afterImage').addEventListener('change', async (e) => {
         if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
             try {
-                loadedAfter = await loadImage(e.target.files[0]);
-                const status = document.getElementById('aStatus');
-                status.textContent = 'Loaded ✓';
-                status.className = 'status-tag ready';
-                runGenerate(false);
+                loadedAfter = await loadImage(file);
+                const btn = document.getElementById('aUploadBtn');
+                const txt = document.getElementById('aText');
+                txt.textContent = '✓ ' + file.name;
+                btn.classList.add('ready');
+                runGenerate();
             } catch (err) {
                 console.error(err);
             }
@@ -212,13 +264,15 @@
     function resetBeforePosition() {
         document.getElementById('bX').value = 0;
         document.getElementById('bY').value = 0;
-        runGenerate(false);
+        document.getElementById('bZoom').value = 100;
+        runGenerate();
     }
 
     function resetAfterPosition() {
         document.getElementById('aX').value = 0;
         document.getElementById('aY').value = 0;
-        runGenerate(false);
+        document.getElementById('aZoom').value = 100;
+        runGenerate();
     }
 
     function loadImage(source) {
@@ -239,13 +293,8 @@
         });
     }
 
-    async function runGenerate(isManualClick) {
-        if (!loadedBefore || !loadedAfter) {
-            if (isManualClick) {
-                alert(`Please upload both photos first.\n- BEFORE: ${loadedBefore ? 'Ready' : 'MISSING'}\n- AFTER: ${loadedAfter ? 'Ready' : 'MISSING'}`);
-            }
-            return;
-        }
+    async function runGenerate() {
+        if (!loadedBefore || !loadedAfter) return;
 
         try {
             const frameFilename = document.getElementById('layoutSelect').value;
@@ -455,13 +504,13 @@
 
             xInput.value = Math.max(-200, Math.min(200, Math.round(initialSliderX + deltaSliderX)));
             yInput.value = Math.max(-200, Math.min(200, Math.round(initialSliderY + deltaSliderY)));
-            runGenerate(false);
+            runGenerate();
         } else if (e.touches.length === 2 && initialPinchDist) {
             const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             const ratio = currentDist / initialPinchDist;
             const zoomInput = document.getElementById(activeTarget === 'before' ? 'bZoom' : 'aZoom');
             zoomInput.value = Math.max(10, Math.min(300, Math.round(initialZoom * ratio)));
-            runGenerate(false);
+            runGenerate();
         }
     }, { passive: false });
 
@@ -505,7 +554,7 @@
 
         document.getElementById(activeTarget === 'before' ? 'bX' : 'aX').value = Math.max(-200, Math.min(200, Math.round(initialSliderX + deltaSliderX)));
         document.getElementById(activeTarget === 'before' ? 'bY' : 'aY').value = Math.max(-200, Math.min(200, Math.round(initialSliderY + deltaSliderY)));
-        runGenerate(false);
+        runGenerate();
     });
 
     window.addEventListener('mouseup', () => {
@@ -522,7 +571,7 @@
         let currentZoom = parseFloat(zoomInput.value);
         let step = e.deltaY < 0 ? 5 : -5;
         zoomInput.value = Math.max(10, Math.min(300, currentZoom + step));
-        runGenerate(false);
+        runGenerate();
     }, { passive: false });
 
     // Register Service Worker for PWA / Install prompt
